@@ -1,0 +1,51 @@
+{
+  "title": "Transmissão",
+  "items": [
+    {
+      "type": "category",
+      "id": "extra",
+      "label": "Extra",
+      "icon": "folder",
+      "slug": "extra",
+      "items": [
+        {
+          "type": "category",
+          "id": "configuracoes-ip-camera",
+          "label": "Configurações IP Camera",
+          "icon": "camera",
+          "slug": "configuracoes-ip-camera",
+          "items": [
+            { "type": "page", "id": "introducao", "label": "Introdução", "icon": "file-text", "path": "extra/configuracoes-ip-camera/introducao" },
+            { "type": "page", "id": "configuracoes-da-imagem", "label": "Configurações da imagem", "icon": "image", "path": "extra/configuracoes-ip-camera/configuracoes-da-imagem" },
+            { "type": "page", "id": "configuracoes-de-video", "label": "Configurações de vídeo", "icon": "video", "path": "extra/configuracoes-ip-camera/configuracoes-de-video" },
+            { "type": "page", "id": "configuracoes-de-rede", "label": "Configurações de Rede", "icon": "wifi", "path": "extra/configuracoes-ip-camera/configuracoes-de-rede" },
+            { "type": "page", "id": "informacoes-do-dispositivo", "label": "Informações do dispositivo", "icon": "info", "path": "extra/configuracoes-ip-camera/informacoes-do-dispositivo" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "id": "informatica-basicas",
+      "label": "Informática Básicas",
+      "icon": "monitor",
+      "slug": "informatica-basicas",
+      "collapsed": true,
+      "items": [
+        { "type": "page", "id": "primeiros-passos", "label": "Primeiros passos", "icon": "file-text", "path": "informatica-basicas/primeiros-passos" }
+      ]
+    },
+    { "type": "page", "id": "pagina-inicial", "label": "Página Inicial", "icon": "home", "path": "pagina-inicial" },
+    {
+      "type": "category",
+      "id": "transmissao",
+      "label": "Transmissão",
+      "icon": "radio",
+      "slug": "transmissao",
+      "collapsed": true,
+      "items": [
+        { "type": "page", "id": "visao-geral", "label": "Visão geral", "icon": "file-text", "path": "transmissao/visao-geral" }
+      ]
+    }
+  ]
+}
