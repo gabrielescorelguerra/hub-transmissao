@@ -11,6 +11,7 @@ function parseHash() {
   const [area, ...rest] = raw.split('/');
   if (area === 'editor') return { area: 'editor', path: rest.join('/') };
   if (area === 'docs') return { area: 'docs', path: rest.join('/') };
+  if (area === 'checklist' || area === 'mensagens' || area === 'login') return { area, path: rest.join('/') };
   return { area: 'docs', path: '' };
 }
 
@@ -23,6 +24,17 @@ async function route() {
   app.append(h('div', { class: 'v-empty' }, 'Carregando…'));
   try {
     if (!S.state.auth) await S.resume();
+    if (r.area === 'login') {
+      const { mountLogin } = await import('./login.js');
+      if (my !== seq) return;
+      if (S.state.auth) { location.replace('#/' + (r.path || '')); return; }
+      clear(app); cleanup = mountLogin(app, () => { location.hash = '#/' + (r.path || ''); }); return;
+    }
+    if (r.area === 'checklist' || r.area === 'mensagens') {
+      const { mountList } = await import('./lists.js');
+      if (my !== seq) return;
+      clear(app); cleanup = await mountList(app, r.area); return;
+    }
     if (r.area === 'editor') {
       if (!S.state.auth) {
         const { mountLogin } = await import('./login.js');

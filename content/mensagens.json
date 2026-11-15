@@ -1,0 +1,27 @@
+{
+  "title": "Mensagens da transmissão",
+  "groups": [
+    {
+      "id": "abertura",
+      "title": "Abertura",
+      "messages": [
+        {
+          "id": "m1",
+          "title": "Boas-vindas",
+          "text": "Olá! Sejam bem-vindos à nossa transmissão. Que Deus abençoe a todos! 🙏"
+        }
+      ]
+    },
+    {
+      "id": "encerramento",
+      "title": "Encerramento",
+      "messages": [
+        {
+          "id": "m2",
+          "title": "Agradecimento",
+          "text": "Obrigado por participar! Até o próximo culto."
+        }
+      ]
+    }
+  ]
+}

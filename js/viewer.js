@@ -35,7 +35,7 @@ export async function mountViewer(root, path) {
   const top = h('header', { class: 'v-top' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Abrir menu', onclick: () => side.classList.toggle('open') }, icon('menu', 20)),
     h('a', { class: 'brand', href: '#/' }, h('span', { class: 'logo' }, icon('book', 16, '#fff')), m.title || CONFIG.siteName),
-    h('nav', {}, h('a', { href: '#/', class: 'active' }, 'Documentação')),
+    h('nav', { class: 'topnav' }, h('a', { href: '#/', class: 'active' }, 'Documentação'), h('a', { href: '#/checklist' }, 'Checklist'), h('a', { href: '#/mensagens' }, 'Mensagens')),
     h('span', { class: 'grow' }), searchBox.el,
     h('a', { class: 'btn ghost sm', href: `https://github.com/${CONFIG.owner}/${CONFIG.repo}`, target: '_blank', rel: 'noopener noreferrer' }, icon('github', 15), 'GitHub'),
     themeBtn,

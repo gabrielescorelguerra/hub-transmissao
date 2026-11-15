@@ -9,7 +9,10 @@ Site de documentação (estilo Docusaurus) **sem banco de dados e sem servidor**
 - `assets/img/` — imagens enviadas pelo editor.
 - `index.html` + `js/` + `css/` — o site e o editor (JavaScript puro, sem build).
 
-Site: `#/docs/<caminho>` · Editor: `#/editor` (pede login).
+- `content/checklist.json` — checklist do culto (itens podem ter link para uma página de tutorial).
+- `content/mensagens.json` — mensagens da transmissão (cada uma com botão **Copiar**).
+
+Site: `#/docs/<caminho>` · `#/checklist` · `#/mensagens` · Editor: `#/editor` (pede login).
 
 ## Hospedar (única coisa necessária)
 

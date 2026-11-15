@@ -1,0 +1,65 @@
+{
+  "title": "Checklist do culto",
+  "sections": [
+    {
+      "id": "antes",
+      "title": "Antes do culto",
+      "items": [
+        {
+          "id": "a1",
+          "text": "Ligar e testar as câmeras",
+          "note": "",
+          "doc": "extra/configuracoes-ip-camera/introducao"
+        },
+        {
+          "id": "a2",
+          "text": "Conferir internet e chave de transmissão",
+          "note": "",
+          "doc": ""
+        },
+        {
+          "id": "a3",
+          "text": "Testar áudio da mesa",
+          "note": "",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "id": "durante",
+      "title": "Durante o culto",
+      "items": [
+        {
+          "id": "d1",
+          "text": "Monitorar áudio e vídeo da transmissão",
+          "note": "",
+          "doc": ""
+        },
+        {
+          "id": "d2",
+          "text": "Enviar as mensagens no chat",
+          "note": "Veja a aba Mensagens",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "id": "depois",
+      "title": "Depois do culto",
+      "items": [
+        {
+          "id": "p1",
+          "text": "Encerrar a transmissão",
+          "note": "",
+          "doc": ""
+        },
+        {
+          "id": "p2",
+          "text": "Desligar e guardar os equipamentos",
+          "note": "",
+          "doc": ""
+        }
+      ]
+    }
+  ]
+}
