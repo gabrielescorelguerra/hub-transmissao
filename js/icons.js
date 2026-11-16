@@ -47,6 +47,30 @@ export const ICONS = {
   'map-pin': I('M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'Geral', 'local mapa lugar pin map'),
   'mail': I('M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7', 'Geral', 'email e-mail carta mail'),
   'search': I('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3', 'Geral', 'buscar lupa search'),
+  'folder-plus': I('M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z M12 10v6 M9 13h6', 'Pastas', 'pasta nova adicionar folder plus'),
+  'folder-check': I('M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z m9 13 2 2 4-4', 'Pastas', 'pasta concluído ok folder check'),
+  'folder-search': I('M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z M11 14a2 2 0 1 0 0-.01 M13 16l1.5 1.5', 'Pastas', 'pasta buscar folder search'),
+  'archive': I('M21 8v13H3V8 M1 3h22v5H1z M10 12h4', 'Pastas', 'arquivo morto caixa archive'),
+  'box': I('M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7 12 12l8.7-5 M12 22V12', 'Pastas', 'caixa pacote box package'),
+  'briefcase': I('M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16 M20 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z', 'Pastas', 'maleta trabalho pasta briefcase work'),
+  'clipboard-check': I('M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z M9 14l2 2 4-4', 'Pastas', 'checklist lista tarefas prancheta clipboard'),
+  'layout': I('M3 3h7v9H3z M14 3h7v5h-7z M14 12h7v9h-7z M3 16h7v5H3z', 'Pastas', 'painel layout dashboard'),
+  'tag': I('M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z M7.5 7.5h.01', 'Pastas', 'etiqueta tag rótulo'),
+  'flag': I('M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7', 'Pastas', 'bandeira marco flag'),
+  'graduation-cap': I('M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z M22 10v6 M6 12.5V16a6 3 0 0 0 12 0v-3.5', 'Pastas', 'curso aprender treinamento tutorial graduation'),
+  'cast': I('M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6 M2 12a9 9 0 0 1 8 8 M2 16a5 5 0 0 1 4 4 M2 20h.01', 'Mídia', 'transmitir espelhar cast'),
+  'film': I('M19.82 2H4.18A2.18 2.18 0 0 0 2 4.18v15.64A2.18 2.18 0 0 0 4.18 22h15.64A2.18 2.18 0 0 0 22 19.82V4.18A2.18 2.18 0 0 0 19.82 2z M7 2v20 M17 2v20 M2 12h20 M2 7h5 M2 17h5 M17 17h5 M17 7h5', 'Mídia', 'filme cinema gravação film'),
+  'volume': I('M11 5 6 9H2v6h4l5 4V5z M15.54 8.46a5 5 0 0 1 0 7.07 M19.07 4.93a10 10 0 0 1 0 14.14', 'Mídia', 'volume som áudio speaker'),
+  'music': I('M9 18V5l12-2v13 M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'Mídia', 'música louvor canto music'),
+  'signal': I('M2 20h.01 M7 20v-4 M12 20v-8 M17 20V8 M22 4v16', 'Rede', 'sinal força signal'),
+  'cpu': I('M18 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3', 'Sistema', 'processador chip computador cpu'),
+  'hard-drive': I('M22 12H2 M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z M6 16h.01 M10 16h.01', 'Sistema', 'disco hd armazenamento drive'),
+  'printer': I('M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z', 'Sistema', 'impressora imprimir printer'),
+  'plug': I('M12 22v-5 M9 8V2 M15 8V2 M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z', 'Sistema', 'tomada cabo energia plug'),
+  'battery': I('M17 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z M23 13v-2', 'Sistema', 'bateria energia battery'),
+  'key': I('m21 2-9.6 9.6 M7.5 15.5a5.5 5.5 0 1 0 0 .01z M15.5 7.5l3 3L22 7l-3-3', 'Segurança', 'chave senha key'),
+  'cross': I('M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z', 'Pessoas', 'cruz igreja culto cross church'),
+  'smile': I('M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M8 14s1.5 2 4 2 4-2 4-2 M9 9h.01 M15 9h.01', 'Pessoas', 'sorriso feliz smile'),
   // Ícones de interface (não aparecem no seletor)
   'plus': I('M5 12h14 M12 5v14', null, ''),
   'x': I('M18 6 6 18 M6 6l12 12', null, ''),
@@ -79,7 +103,7 @@ export const ICONS = {
 };
 
 export const ICON_COLORS = ['', '#3D6BF2', '#0EA5E9', '#14B8A6', '#16A34A', '#84CC16', '#F59E0B', '#F97316', '#EF4444', '#EC4899', '#8B5CF6', '#6B7280'];
-export const CATEGORIES = ['Todos', 'Arquivos', 'Mídia', 'Rede', 'Sistema', 'Segurança', 'Pessoas', 'Geral'];
+export const CATEGORIES = ['Todos', 'Arquivos', 'Pastas', 'Mídia', 'Rede', 'Sistema', 'Segurança', 'Pessoas', 'Geral'];
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
