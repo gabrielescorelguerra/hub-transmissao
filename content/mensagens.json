@@ -8,7 +8,11 @@
         {
           "id": "m1",
           "title": "Boas-vindas",
-          "text": "Olá! Sejam bem-vindos à nossa transmissão. Que Deus abençoe a todos! 🙏"
+          "text": "Olá! Sejam bem-vindos à nossa transmissão. Que Deus abençoe a todos! 🙏",
+          "alts": [
+            "Paz do Senhor! Que bom ter você conosco nesta transmissão. Seja bem-vindo(a)! 🙌",
+            "Bem-vindos! Estamos felizes em ter vocês aqui conosco. Deus abençoe! ✨"
+          ]
         }
       ]
     },

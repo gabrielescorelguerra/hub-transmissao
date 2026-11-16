@@ -116,6 +116,16 @@ export async function mountList(root, kind, ctx = {}) {
     if (editing) main.append(h('button', { class: 'dashed', onclick: () => { data.sections.push({ id: uid(), title: 'Nova seção', items: [] }); save(); render(); } }, icon('plus', 14), 'Nova seção'));
   }
 
+  // Mensagens: cada uma tem o texto principal (msg.text) e variações opcionais (msg.alts).
+  const variants = (msg) => [msg.text || '', ...(msg.alts || [])].filter((t, i) => i === 0 || t.trim());
+  const pick = new Map(); // id da mensagem -> índice da variação exibida
+  const shuffleOne = (msg) => {
+    const n = variants(msg).length; if (n < 2) return false;
+    let j; do { j = Math.floor(Math.random() * n); } while (j === (pick.get(msg.id) || 0));
+    pick.set(msg.id, j); return true;
+  };
+  const shuffleAll = () => { let c = 0; data.groups.forEach((g) => g.messages.forEach((msg) => { if (shuffleOne(msg)) c++; })); render(); toast(c ? 'Mensagens sorteadas!' : 'Nenhuma mensagem tem variações para sortear.', { ms: 1800 }); };
+
   function renderMessages() {
     data.groups.forEach((g, gi) => {
       const box = accentOf(h('section', { class: 'l-sec' }), g.color);
@@ -126,11 +136,17 @@ export async function mountList(root, kind, ctx = {}) {
       g.messages.forEach((msg, mi) => {
         const card = h('div', { class: 'msg-card' });
         if (editing) {
-          const ta = h('textarea', { class: 'input', rows: 4, 'aria-label': 'Texto da mensagem', oninput: (e) => { msg.text = e.target.value; }, onchange: () => save() }); ta.value = msg.text || '';
-          card.append(h('div', { class: 'top' }, h('div', { class: 'grow' }, input(msg.title, 'Título da mensagem', (v) => { msg.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(g.messages, mi, -1)), tool('arrow-down', 'Descer', () => move(g.messages, mi, 1)), tool('trash', 'Excluir mensagem', () => del(g.messages, mi, 'esta mensagem'), 'danger'))), ta);
+          const area = (val, label, on) => { const t = h('textarea', { class: 'input', rows: 4, 'aria-label': label, oninput: (e) => on(e.target.value), onchange: () => save() }); t.value = val || ''; return t; };
+          const alts = msg.alts || [];
+          card.append(h('div', { class: 'top' }, h('div', { class: 'grow' }, input(msg.title, 'Título da mensagem', (v) => { msg.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(g.messages, mi, -1)), tool('arrow-down', 'Descer', () => move(g.messages, mi, 1)), tool('trash', 'Excluir mensagem', () => del(g.messages, mi, 'esta mensagem'), 'danger'))),
+            h('div', { class: 'var-label' }, 'Opção 1'), area(msg.text, 'Texto da opção 1', (v) => { msg.text = v; }));
+          alts.forEach((t, k) => card.append(h('div', { class: 'var-label' }, `Opção ${k + 2}`, tool('trash', 'Excluir esta opção', () => { alts.splice(k, 1); save(); render(); }, 'danger')), area(t, `Texto da opção ${k + 2}`, (v) => { alts[k] = v; })));
+          card.append(h('button', { class: 'dashed', onclick: () => { (msg.alts ||= []).push(''); save(); render(); } }, icon('plus', 14), 'Adicionar opção de texto'));
         } else {
-          const b = h('button', { class: 'btn primary sm copy-btn', onclick: async () => { const ok = await copy(msg.text || ''); toast(ok ? 'Mensagem copiada!' : 'Não foi possível copiar.', { type: ok ? 'ok' : 'error', ms: 1800 }); b.replaceChildren(icon('check', 14), 'Copiado'); setTimeout(() => b.replaceChildren(icon('copy', 14), 'Copiar'), 1500); } }, icon('copy', 14), 'Copiar');
-          card.append(h('div', { class: 'top' }, h('h3', {}, msg.title), b), h('div', { class: 'msg-text' }, msg.text));
+          const opts = variants(msg); const idx = Math.min(pick.get(msg.id) || 0, opts.length - 1); const shown = opts[idx];
+          const b = h('button', { class: 'btn primary sm copy-btn', onclick: async () => { const ok = await copy(shown || ''); toast(ok ? 'Mensagem copiada!' : 'Não foi possível copiar.', { type: ok ? 'ok' : 'error', ms: 1800 }); b.replaceChildren(icon('check', 14), 'Copiado'); setTimeout(() => b.replaceChildren(icon('copy', 14), 'Copiar'), 1500); } }, icon('copy', 14), 'Copiar');
+          const dice = opts.length > 1 ? h('button', { class: 'icon-btn', title: 'Sortear outra opção', 'aria-label': `Sortear outra opção de ${msg.title}`, onclick: () => { shuffleOne(msg); render(); } }, icon('shuffle', 15)) : null;
+          card.append(h('div', { class: 'top' }, h('h3', {}, msg.title, opts.length > 1 ? h('span', { class: 'var-count' }, `${idx + 1}/${opts.length}`) : null), dice, b), h('div', { class: 'msg-text' }, shown));
         }
         grid.append(card);
       });
@@ -149,6 +165,7 @@ export async function mountList(root, kind, ctx = {}) {
     const head = accentOf(h('div', { class: 'l-head' }, titleEl), data.color);
     if (data.color) head.classList.remove('colored');
     if (editing) head.append(h('button', { class: 'btn sm', onclick: (e) => pickColor(e.currentTarget, data.color || '', (c) => { data.color = c; save(); closeMenu(); render(); }) }, h('i', { style: { width: '12px', height: '12px', borderRadius: '50%', background: data.color || 'var(--muted)', display: 'inline-block' } }), 'Cor do título'));
+    if (!editing && kind === 'mensagens') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn primary sm', onclick: shuffleAll }, icon('shuffle', 14, '#fff'), 'Gerar mensagens aleatórias'));
     if (!editing && kind === 'checklist') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { ticks.clear(); LS.set(ticksKey, '[]'); main.querySelectorAll('.l-item.done').forEach((r) => { r.classList.remove('done'); r.setAttribute('aria-checked', 'false'); }); main.querySelectorAll('.l-sec').forEach((sec) => { sec.querySelector('.prog-bar i') && (sec.querySelector('.prog-bar i').style.width = '0%'); const t = sec.querySelector('.prog > span:last-child'); if (t) t.textContent = t.textContent.replace(/^\d+/, '0'); }); } }, 'Limpar marcações'));
     main.append(head, h('p', { class: 'muted', style: { marginTop: '-12px' } }, C.sub));
     if (!(data[C.key] || []).length && !editing) main.append(h('div', { class: 'v-empty' }, 'Nada por aqui ainda.'));
