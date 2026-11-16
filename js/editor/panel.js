@@ -38,9 +38,16 @@ export function createPanel(ed) {
       h('div', { class: 'icon-row' }, h('span', { class: 'icon-tile' }, icon(n.icon || (n.type === 'category' ? 'folder' : 'file-text'), 20, Tree.colorOf(ed.manifest(), n.id) || 'currentColor')),
         h('div', { class: 'grow' }, h('div', { style: { fontWeight: 500 } }, n.icon?.startsWith('emoji:') ? 'Emoji' : n.icon || 'padrão'), h('div', { class: 'muted small' }, 'Aparece na sidebar do site')),
         h('button', { class: 'btn sm', onclick: () => ed.chooseIcon(n) }, 'Trocar')));
+    const inh = Tree.inheritedColor(ed.manifest(), n.id);
+    const own = !!n.iconColor;
+    const setColor = async (c) => { await ed.updateMeta(n, { iconColor: c }); ed.applyAccent(); render(); };
     const colorRow = h('div', { class: 'field' }, h('label', {}, n.type === 'category' ? 'Cor da seção' : 'Cor da página'),
-      colorField(n.iconColor || '', async (c) => { await ed.updateMeta(n, { iconColor: c }); ed.applyAccent(); }, { live: false }),
-      h('span', { class: 'hint' }, n.type === 'category' ? 'Pinta o ícone e é herdada pelas páginas desta seção.' : 'Pinta o título e o ícone no site. Vazio = cor da seção.'));
+      inh ? h('div', { class: 'inherit-row' },
+        h('span', { class: 'inherit-dot', style: { background: inh.color } }),
+        h('span', { class: 'grow small' }, own ? `Cor própria (a pasta "${inh.from.label}" usa outra)` : `Herdando a cor da pasta "${inh.from.label}"`),
+        own ? h('button', { class: 'btn sm', onclick: () => setColor('') }, 'Herdar da pasta') : null) : null,
+      colorField(n.iconColor || '', async (c) => { await ed.updateMeta(n, { iconColor: c }); ed.applyAccent(); if (!c || !n.iconColor || inh) render(); }, { live: false }),
+      h('span', { class: 'hint' }, n.type === 'category' ? 'Pinta o ícone e é herdada pelas páginas e subpastas desta seção.' : 'Pinta o título e o ícone no site. Vazio = herda a cor da pasta.'));
     const labelIn = h('input', { class: 'input', value: n.label, 'aria-label': 'Nome no menu', onchange: (e) => { const v = e.target.value.trim(); if (v) ed.updateMeta(n, { label: v }); else e.target.value = n.label; } });
 
     if (n.type === 'category') {

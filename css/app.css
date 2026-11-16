@@ -561,3 +561,38 @@ body.no-shell { padding-bottom: 0 !important; }
   .cbx { width: 28px; height: 28px; }
 }
 a.btn { text-decoration: none; } a.btn:not(.primary):not(.danger) { color: var(--text); }
+
+/* herança de cor das pastas */
+.inherit-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2); margin-bottom: 6px; }
+.inherit-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+
+/* checklist: seções recolhíveis e subtítulos */
+.l-fold-head { cursor: pointer; user-select: none; }
+.l-fold-head:focus-visible { outline: 2px solid var(--accent, var(--primary)); outline-offset: -2px; }
+.l-chev { color: var(--muted); transition: transform .2s var(--ease); display: inline-flex; }
+.l-sec.closed .l-chev { transform: rotate(-90deg); }
+.l-sec.closed > header { border-bottom-color: transparent; }
+.l-fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .25s var(--ease); }
+.l-sec.closed > .l-fold { grid-template-rows: 0fr; }
+.l-fold-in { overflow: hidden; min-height: 0; }
+.l-sub { padding: 10px 16px 6px; border-top: 1px solid var(--border); background: var(--bg-2); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.l-sec.colored .l-sub { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 6%, var(--bg-2)); }
+.l-fold-in > .l-sub:first-child, .l-fold-in > .l-item:first-child { border-top: 0; }
+.l-addrow { display: flex; gap: 8px; padding: 8px 16px 12px; } .l-addrow .dashed { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .l-fold, .l-chev { transition: none; } }
+
+/* seletor de conteúdo do checklist */
+.docpick-btn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; min-width: 190px; max-width: 280px; border: 1px dashed var(--border-2); border-radius: 8px; background: transparent; color: var(--muted); font-size: 13px; text-align: left; cursor: pointer; }
+.docpick-btn:hover { border-color: var(--primary); color: var(--primary); }
+.docpick-btn.set { border-style: solid; background: var(--bg-2); color: var(--text); }
+.docpick-btn .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docpick-tag { font-size: 10.5px; padding: 1px 7px; border-radius: 8px; background: var(--hover); color: var(--muted); font-weight: 600; white-space: nowrap; }
+.docpick-list { max-height: min(46vh, 380px); overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.docpick-row { display: flex; align-items: center; gap: 8px; min-height: 36px; padding-right: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.docpick-row:hover { background: var(--hover); } .docpick-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.docpick-row.on { background: var(--soft); color: var(--soft-text); font-weight: 500; }
+.dp-label { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dp-crumb { flex: 1; min-width: 0; color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-label + .docpick-tag { margin-left: auto; }
+.dp-chev { width: 22px; height: 22px; border: 0; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; flex: none; padding: 0; transition: transform .15s; }
+.dp-chev.open { transform: rotate(90deg); } .dp-chev.spacer { pointer-events: none; }
+.l-doc.folder small { font-size: 11px; opacity: .75; margin-left: 2px; }

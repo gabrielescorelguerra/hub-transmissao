@@ -2,6 +2,7 @@
 import { h, icon, clear, toast, ask, pickColor, closeMenu } from './ui.js';
 import { pickIcon } from './editor/iconpicker.js';
 import { attachPreview } from './hovercard.js';
+import { docPickerButton, resolveRef } from './editor/docpicker.js';
 import { CONFIG } from './config.js';
 import * as S from './store.js';
 import * as Tree from './tree.js';
@@ -37,7 +38,8 @@ export async function mountList(root, kind, ctx = {}) {
   let editing = false;
   const ticksKey = 'hub.ticks.' + CONFIG.repo;
   const ticks = new Set(JSON.parse(LS.get(ticksKey) || '[]'));
-  const pages = Tree.pages(m).filter((p) => !p.hidden);
+  const foldKey = 'hub.fold.' + CONFIG.repo;
+  const folded = new Set(JSON.parse(LS.get(foldKey) || '[]'));
   const save = () => S.setText(C.path, JSON.stringify(data, null, 2) + '\n');
 
   const edBtn = logged() ? h('button', { class: 'btn sm', onclick: () => { editing = !editing; render(); } }, icon('pen', 14), 'Editar')
@@ -50,12 +52,6 @@ export async function mountList(root, kind, ctx = {}) {
   const tool = (ic, label, fn, cls = '') => h('button', { class: `icon-btn ${cls}`, title: label, 'aria-label': label, style: { width: '28px', height: '28px' }, onclick: fn }, icon(ic, 14));
   const del = async (arr, i, what) => { if (await ask({ title: 'Excluir', message: `Excluir ${what}?`, confirm: 'Excluir', danger: true })) { arr.splice(i, 1); save(); render(); } };
   const input = (val, ph, on, extra = {}) => h('input', { class: 'input', value: val || '', placeholder: ph, 'aria-label': ph, oninput: (e) => on(e.target.value), onchange: () => save(), ...extra });
-  const docSelect = (val, on) => {
-    const s = h('select', { class: 'select', style: { width: 'auto', maxWidth: '260px', height: '32px' }, 'aria-label': 'Documento do tutorial', onchange: (e) => { on(e.target.value); save(); } },
-      h('option', { value: '' }, 'Sem documento'), pages.map((p) => h('option', { value: p.path, selected: p.path === val }, p.label)));
-    return s;
-  };
-
   const accentOf = (el, color) => { if (color) { el.classList.add('accent-scope', 'colored'); el.style.setProperty('--accent', color); } return el; };
   const iconBtn = (obj, fallback, label) => h('button', { class: 'icon-btn', title: 'Ícone e cor', 'aria-label': `Ícone e cor de ${label}`, style: { width: '34px', height: '34px', background: obj.color ? `color-mix(in srgb, ${obj.color} 14%, transparent)` : 'var(--hover)' },
     onclick: async () => { const r = await pickIcon({ current: obj.icon || fallback, color: obj.color || '', label }); if (r) { obj.icon = r.icon; obj.color = r.color; save(); render(); } } }, icon(obj.icon || fallback, 18, obj.color || 'currentColor'));
@@ -63,23 +59,42 @@ export async function mountList(root, kind, ctx = {}) {
 
   function renderChecklist() {
     data.sections.forEach((sec, si) => {
-      const countDone = () => sec.items.filter((i) => ticks.has(i.id)).length;
+      const real = () => sec.items.filter((i) => i.type !== 'subtitle');
+      const countDone = () => real().filter((i) => ticks.has(i.id)).length;
+      const total = () => real().length;
       const done = countDone();
-      const barFill = h('i', { style: { width: sec.items.length ? (done / sec.items.length * 100) + '%' : '0%' } });
-      const countTxt = h('span', {}, `${done}/${sec.items.length}`);
-      const updateProg = () => { const d = countDone(); barFill.style.width = sec.items.length ? (d / sec.items.length * 100) + '%' : '0%'; countTxt.textContent = `${d}/${sec.items.length}`; };
+      const barFill = h('i', { style: { width: total() ? (done / total() * 100) + '%' : '0%' } });
+      const countTxt = h('span', {}, `${done}/${total()}`);
+      const updateProg = () => { const d = countDone(); barFill.style.width = total() ? (d / total() * 100) + '%' : '0%'; countTxt.textContent = `${d}/${total()}`; };
       const box = accentOf(h('section', { class: 'l-sec' }), sec.color);
       const head = h('header', {});
       if (editing) head.append(iconBtn(sec, 'list', sec.title), h('div', { class: 'grow' }, input(sec.title, 'Nome da seção', (v) => { sec.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir seção', () => move(data.sections, si, -1)), tool('arrow-down', 'Descer seção', () => move(data.sections, si, 1)), tool('trash', 'Excluir seção', () => del(data.sections, si, `a seção "${sec.title}"`), 'danger')));
-      else head.append(headIcon(sec, 'list'), h('span', { class: 'sec-title' }, sec.title), h('span', { class: 'prog' }, h('span', { class: 'prog-bar' }, barFill), countTxt));
-      box.append(head);
+      else {
+        const isClosed = folded.has(sec.id);
+        head.classList.add('l-fold-head'); head.tabIndex = 0; head.setAttribute('role', 'button'); head.setAttribute('aria-expanded', String(!isClosed));
+        head.append(h('span', { class: 'l-chev ic' }, icon('chev-d', 16)), headIcon(sec, 'list'), h('span', { class: 'sec-title' }, sec.title), h('span', { class: 'prog' }, h('span', { class: 'prog-bar' }, barFill), countTxt));
+        const flip = () => { const c = !box.classList.contains('closed'); box.classList.toggle('closed', c); head.setAttribute('aria-expanded', String(!c)); c ? folded.add(sec.id) : folded.delete(sec.id); LS.set(foldKey, JSON.stringify([...folded])); body.inert = c; };
+        head.addEventListener('click', flip);
+        head.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+        if (isClosed) box.classList.add('closed');
+      }
+      const inner = h('div', { class: 'l-fold-in' });
+      const body = h('div', { class: 'l-fold' }, inner);
+      body.inert = !editing && folded.has(sec.id);
+      box.append(head, body);
       sec.items.forEach((it, ii) => {
+        if (it.type === 'subtitle') {
+          const sub = h('div', { class: 'l-sub' });
+          if (editing) sub.append(h('div', { class: 'grow' }, input(it.text, 'Subtítulo', (v) => { it.text = v; }, { style: { fontWeight: 600 } })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(sec.items, ii, -1)), tool('arrow-down', 'Descer', () => move(sec.items, ii, 1)), tool('trash', 'Excluir subtítulo', () => del(sec.items, ii, 'este subtítulo'), 'danger')));
+          else sub.append(h('span', {}, it.text || 'Subtítulo'));
+          inner.append(sub); return;
+        }
         const row = h('div', { class: `l-item${!editing && ticks.has(it.id) ? ' done' : ''}` });
         if (editing) {
-          row.append(h('div', { class: 'l-edit' }, input(it.text, 'Procedimento', (v) => { it.text = v; }), h('div', { class: 'row' }, input(it.note, 'Observação (opcional)', (v) => { it.note = v; }, { style: { flex: 1, minWidth: '160px', height: '32px' } }), docSelect(it.doc, (v) => { it.doc = v; }))),
+          row.append(h('div', { class: 'l-edit' }, input(it.text, 'Procedimento', (v) => { it.text = v; }), h('div', { class: 'row' }, input(it.note, 'Observação (opcional)', (v) => { it.note = v; }, { style: { flex: 1, minWidth: '160px', height: '32px' } }), docPickerButton(m, it.doc, (v) => { it.doc = v; save(); }))),
             h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(sec.items, ii, -1)), tool('arrow-down', 'Descer', () => move(sec.items, ii, 1)), tool('trash', 'Excluir item', () => del(sec.items, ii, 'este item'), 'danger')));
         } else {
-          const doc = it.doc && Tree.findByPath(m, it.doc);
+          const doc = resolveRef(m, it.doc);
           const mark = h('span', { class: 'cbx', 'aria-hidden': 'true' }, null);
           mark.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
           row.classList.add('l-click'); row.tabIndex = 0; row.setAttribute('role', 'checkbox'); row.setAttribute('aria-label', it.text);
@@ -89,11 +104,13 @@ export async function mountList(root, kind, ctx = {}) {
           row.addEventListener('click', (e) => { if (e.target.closest('a')) return; toggle(); });
           row.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && e.target === row) { e.preventDefault(); toggle(); } });
           row.append(mark, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null));
-          if (doc) { const a = h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 13), doc.label); attachPreview(a, it.doc, doc.label, { sheet: true }); row.append(a); }
+          if (doc && doc.href) { const dc = doc.color; const a = h('a', { class: `l-doc${doc.kind === 'folder' ? ' folder' : ''}`, href: doc.href, style: dc ? { background: `color-mix(in srgb, ${dc} 14%, transparent)`, color: dc } : {} }, icon(doc.kind === 'folder' ? (doc.node.icon || 'folder') : 'book', 13, dc || 'currentColor'), doc.label, doc.kind === 'folder' ? h('small', {}, `${doc.count}`) : null); if (doc.kind === 'page') attachPreview(a, it.doc, doc.label, { sheet: true }); row.append(a); }
         }
-        box.append(row);
+        inner.append(row);
       });
-      if (editing) box.append(h('button', { class: 'dashed l-add', onclick: () => { sec.items.push({ id: uid(), text: '', note: '', doc: '' }); save(); render(); } }, icon('plus', 14), 'Adicionar item'));
+      if (editing) inner.append(h('div', { class: 'l-addrow' },
+        h('button', { class: 'dashed l-add', onclick: () => { sec.items.push({ id: uid(), text: '', note: '', doc: '' }); save(); render(); } }, icon('plus', 14), 'Adicionar item'),
+        h('button', { class: 'dashed l-add', onclick: () => { sec.items.push({ id: uid(), type: 'subtitle', text: 'Novo subtítulo' }); save(); render(); } }, icon('plus', 14), 'Adicionar subtítulo')));
       main.append(box);
     });
     if (editing) main.append(h('button', { class: 'dashed', onclick: () => { data.sections.push({ id: uid(), title: 'Nova seção', items: [] }); save(); render(); } }, icon('plus', 14), 'Nova seção'));

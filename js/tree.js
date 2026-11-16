@@ -51,6 +51,13 @@ export function colorOf(m, id) {
   return '';
 }
 
+/** Cor herdada das pastas acima (ignora a cor do próprio nó): { color, from } ou null. */
+export function inheritedColor(m, id) {
+  const chain = ancestors(m, id);
+  for (let i = chain.length - 1; i >= 0; i--) if (chain[i].iconColor) return { color: chain[i].iconColor, from: chain[i] };
+  return null;
+}
+
 const uniq = (base, taken) => { let s = base, i = 2; while (taken.has(s)) s = `${base}-${i++}`; return s; };
 
 export function folderOf(m, parentId) {
