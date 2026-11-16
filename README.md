@@ -21,16 +21,19 @@ Netlify, Vercel e Cloudflare Pages também servem: pasta raiz, sem comando de bu
 
 Cada publicação feita no editor é um commit em `main`; o host atualiza sozinho.
 
-## Login do editor
+## Login do editor (senha fixa)
 
-Não há backend, então o login é feito com a sua conta do GitHub, via token:
+O editor pede uma **senha**. Por trás, as alterações são commits no GitHub, que precisam de um token; o token fica guardado **cifrado com a senha** no arquivo `auth.json` do repositório (AES-GCM + PBKDF2). Sem a senha, é só texto cifrado.
 
+**Primeiro acesso (uma vez):**
 1. <https://github.com/settings/personal-access-tokens/new> (Fine-grained token).
 2. *Repository access* → **Only select repositories** → `gabrielescorelguerra/hub-transmissao`.
-3. *Permissions* → **Contents: Read and write** (e **Pull requests: Read and write** se for abrir PRs).
-4. Gere, abra `#/editor` e cole o token.
+3. *Permissions* → **Contents: Read and write**.
+4. Abra `#/editor`, clique em **Primeiro acesso / trocar senha**, cole o token e escolha a senha. O site grava o `auth.json` no repositório.
 
-Quem tem permissão de escrita no repositório pode editar; o site público é somente leitura. O token fica só no seu navegador e vai apenas para `api.github.com`. Para dar acesso a outra pessoa, adicione-a como colaboradora do repositório.
+Depois disso, qualquer pessoa com a senha entra só digitando a senha. Para trocar a senha (ou renovar um token expirado), repita o primeiro acesso.
+
+**Atenção:** a senha é simples de propósito, mas o repositório é público no GitHub Pages, então alguém com o `auth.json` pode tentar adivinhar a senha offline. Use uma senha longa e o token restrito a este repositório; se quiser mais segurança depois, dá para trocar por um login de verdade.
 
 ## Editando
 
