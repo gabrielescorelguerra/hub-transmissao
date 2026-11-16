@@ -1,6 +1,7 @@
 // Páginas "Checklist" e "Mensagens da transmissão": leitura para todos, edição para quem fez login.
 import { h, icon, clear, toast, ask, toggleTheme, pickColor, closeMenu } from './ui.js';
 import { pickIcon } from './editor/iconpicker.js';
+import { attachPreview } from './hovercard.js';
 import { CONFIG } from './config.js';
 import * as S from './store.js';
 import * as Tree from './tree.js';
@@ -66,11 +67,15 @@ export async function mountList(root, kind) {
 
   function renderChecklist() {
     data.sections.forEach((sec, si) => {
-      const done = sec.items.filter((i) => ticks.has(i.id)).length;
+      const countDone = () => sec.items.filter((i) => ticks.has(i.id)).length;
+      const done = countDone();
+      const barFill = h('i', { style: { width: sec.items.length ? (done / sec.items.length * 100) + '%' : '0%' } });
+      const countTxt = h('span', {}, `${done}/${sec.items.length}`);
+      const updateProg = () => { const d = countDone(); barFill.style.width = sec.items.length ? (d / sec.items.length * 100) + '%' : '0%'; countTxt.textContent = `${d}/${sec.items.length}`; };
       const box = accentOf(h('section', { class: 'l-sec' }), sec.color);
       const head = h('header', {});
       if (editing) head.append(iconBtn(sec, 'list', sec.title), h('div', { class: 'grow' }, input(sec.title, 'Nome da seção', (v) => { sec.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir seção', () => move(data.sections, si, -1)), tool('arrow-down', 'Descer seção', () => move(data.sections, si, 1)), tool('trash', 'Excluir seção', () => del(data.sections, si, `a seção "${sec.title}"`), 'danger')));
-      else head.append(headIcon(sec, 'list'), h('span', { class: 'sec-title' }, sec.title), h('span', { class: 'prog' }, h('span', { class: 'prog-bar' }, h('i', { style: { width: sec.items.length ? (done / sec.items.length * 100) + '%' : '0%' } })), `${done}/${sec.items.length}`));
+      else head.append(headIcon(sec, 'list'), h('span', { class: 'sec-title' }, sec.title), h('span', { class: 'prog' }, h('span', { class: 'prog-bar' }, barFill), countTxt));
       box.append(head);
       sec.items.forEach((it, ii) => {
         const row = h('div', { class: `l-item${!editing && ticks.has(it.id) ? ' done' : ''}` });
@@ -78,9 +83,9 @@ export async function mountList(root, kind) {
           row.append(h('div', { class: 'l-edit' }, input(it.text, 'Procedimento', (v) => { it.text = v; }), h('div', { class: 'row' }, input(it.note, 'Observação (opcional)', (v) => { it.note = v; }, { style: { flex: 1, minWidth: '160px', height: '32px' } }), docSelect(it.doc, (v) => { it.doc = v; }))),
             h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(sec.items, ii, -1)), tool('arrow-down', 'Descer', () => move(sec.items, ii, 1)), tool('trash', 'Excluir item', () => del(sec.items, ii, 'este item'), 'danger')));
         } else {
-          const cb = h('input', { type: 'checkbox', checked: ticks.has(it.id), 'aria-label': it.text, style: { width: '18px', height: '18px', marginTop: '3px', accentColor: 'var(--accent, var(--primary))' }, onchange: (e) => { e.target.checked ? ticks.add(it.id) : ticks.delete(it.id); LS.set(ticksKey, JSON.stringify([...ticks])); render(); } });
+          const cb = h('input', { type: 'checkbox', checked: ticks.has(it.id), 'aria-label': it.text, style: { width: '18px', height: '18px', marginTop: '3px', accentColor: 'var(--accent, var(--primary))' }, onchange: (e) => { e.target.checked ? ticks.add(it.id) : ticks.delete(it.id); LS.set(ticksKey, JSON.stringify([...ticks])); row.classList.toggle('done', e.target.checked); updateProg(); } });
           const doc = it.doc && Tree.findByPath(m, it.doc);
-          row.append(cb, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null)); if (doc) row.append(h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 12), 'Tutorial'));
+          row.append(cb, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null)); if (doc) { const a = h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 12), doc.label); attachPreview(a, it.doc, doc.label); row.append(a); }
         }
         box.append(row);
       });
@@ -114,14 +119,16 @@ export async function mountList(root, kind) {
     if (editing) main.append(h('button', { class: 'dashed', onclick: () => { data.groups.push({ id: uid(), title: 'Novo grupo', messages: [] }); save(); render(); } }, icon('plus', 14), 'Novo grupo'));
   }
 
+  let rendered = false;
   function render() {
     const y = scrollY; clear(main);
+    main.classList.toggle('noanim', rendered); rendered = true;
     const tg = document.getElementById('edtoggle'); if (tg) tg.replaceChildren(icon(editing ? 'check' : 'pen', 14), editing ? 'Concluir edição' : 'Editar');
     const titleEl = editing ? input(data.title, 'Título da página', (v) => { data.title = v; }, { style: { fontSize: '22px', fontWeight: 700, height: '42px', maxWidth: '420px' } }) : h('h1', {}, data.title || C.title);
     const head = accentOf(h('div', { class: 'l-head' }, titleEl), data.color);
     if (data.color) head.classList.remove('colored');
     if (editing) head.append(h('button', { class: 'btn sm', onclick: (e) => pickColor(e.currentTarget, data.color || '', (c) => { data.color = c; save(); closeMenu(); render(); }) }, h('i', { style: { width: '12px', height: '12px', borderRadius: '50%', background: data.color || 'var(--muted)', display: 'inline-block' } }), 'Cor do título'));
-    if (!editing && kind === 'checklist') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { ticks.clear(); LS.set(ticksKey, '[]'); render(); } }, 'Limpar marcações'));
+    if (!editing && kind === 'checklist') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { ticks.clear(); LS.set(ticksKey, '[]'); main.querySelectorAll('.l-item.done').forEach((r) => r.classList.remove('done')); main.querySelectorAll('input[type=checkbox]').forEach((c) => { c.checked = false; }); main.querySelectorAll('.l-sec').forEach((sec) => { sec.querySelector('.prog-bar i') && (sec.querySelector('.prog-bar i').style.width = '0%'); const t = sec.querySelector('.prog > span:last-child'); if (t) t.textContent = t.textContent.replace(/^\d+/, '0'); }); } }, 'Limpar marcações'));
     main.append(head, h('p', { class: 'muted', style: { marginTop: '-12px' } }, C.sub));
     if (!(data[C.key] || []).length && !editing) main.append(h('div', { class: 'v-empty' }, 'Nada por aqui ainda.'));
     (kind === 'checklist' ? renderChecklist : renderMessages)();

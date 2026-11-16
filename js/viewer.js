@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import * as S from './store.js';
 import * as Tree from './tree.js';
 import { renderMarkdown } from './md.js';
+import { attachPreview } from './hovercard.js';
 
 const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -67,6 +68,7 @@ export async function mountViewer(root, firstPath) {
   side.classList.add('no-anim'); requestAnimationFrame(() => requestAnimationFrame(() => side.classList.remove('no-anim')));
 
   const main = h('main', { class: 'v-main', id: 'conteudo' });
+  main.addEventListener('mouseover', (e) => { const a = e.target.closest?.('.prose a[href^="#/docs/"]'); if (a && !a.dataset.pv) { a.dataset.pv = '1'; const p = decodeURIComponent(a.getAttribute('href').slice(7)); attachPreview(a, p, a.textContent); a.dispatchEvent(new MouseEvent('mouseenter')); } });
   const tocEl = h('nav', { class: 'v-toc', 'aria-label': 'Nesta página' });
   root.append(top, h('div', { class: 'v-wrap' }, side, main, tocEl));
 
@@ -105,11 +107,12 @@ export async function mountViewer(root, firstPath) {
       observer = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) tocEl.querySelectorAll('a').forEach((a) => a.classList.toggle('on', a.dataset.id === en.target.id)); }), { rootMargin: '-70px 0px -70% 0px' });
       setTimeout(() => toc.forEach((t) => { const el = document.getElementById(t.id); if (el) observer.observe(el); }), 0);
     }
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
     // pré-carrega vizinhas para a próxima navegação ser instantânea
     [prev, next].forEach((p) => p && S.loadPage(p.path).catch(() => {}));
     // mantém o item ativo visível na sidebar
-    navLinks.get(path)?.scrollIntoView({ block: 'nearest' });
+    const act = navLinks.get(path);
+    if (act) { const sr = side.getBoundingClientRect(), ar = act.getBoundingClientRect(); if (ar.top < sr.top + 8) side.scrollTop -= sr.top + 8 - ar.top; else if (ar.bottom > sr.bottom - 8) side.scrollTop += ar.bottom - sr.bottom + 8; }
   };
 
   await showPage(firstPath);
