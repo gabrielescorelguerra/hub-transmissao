@@ -35,6 +35,7 @@ Quem tem permissão de escrita no repositório pode editar; o site público é s
 ## Editando
 
 - **Visual:** blocos (`/` para inserir), negrito/itálico/código/link, imagens (enviar, colar ou arrastar), avisos (`:::tip`), listas, citações.
+- **Cores:** cada página e seção (e cada seção da checklist/mensagens) pode ter uma cor, que pinta títulos e ícones; páginas herdam a cor da seção.
 - **Sidebar:** arraste para reordenar/mover, duplo clique renomeia, clique no ícone para trocar, `Alt+↑/↓` move pelo teclado.
 - **Código:** acesso a todos os arquivos do repositório; **Dividido** mostra código e visual juntos.
 - **Publicar:** lista as alterações com diff, valida o menu, e publica direto em `main` ou abre um Pull Request. Rascunhos ficam salvos no navegador até publicar.

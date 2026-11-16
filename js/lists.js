@@ -1,5 +1,6 @@
 // Páginas "Checklist" e "Mensagens da transmissão": leitura para todos, edição para quem fez login.
-import { h, icon, clear, toast, ask, toggleTheme } from './ui.js';
+import { h, icon, clear, toast, ask, toggleTheme, pickColor, closeMenu } from './ui.js';
+import { pickIcon } from './editor/iconpicker.js';
 import { CONFIG } from './config.js';
 import * as S from './store.js';
 import * as Tree from './tree.js';
@@ -58,13 +59,18 @@ export async function mountList(root, kind) {
     return s;
   };
 
+  const accentOf = (el, color) => { if (color) { el.classList.add('accent-scope', 'colored'); el.style.setProperty('--accent', color); } return el; };
+  const iconBtn = (obj, fallback, label) => h('button', { class: 'icon-btn', title: 'Ícone e cor', 'aria-label': `Ícone e cor de ${label}`, style: { width: '34px', height: '34px', background: obj.color ? `color-mix(in srgb, ${obj.color} 14%, transparent)` : 'var(--hover)' },
+    onclick: async () => { const r = await pickIcon({ current: obj.icon || fallback, color: obj.color || '', label }); if (r) { obj.icon = r.icon; obj.color = r.color; save(); render(); } } }, icon(obj.icon || fallback, 18, obj.color || 'currentColor'));
+  const headIcon = (obj, fallback) => h('span', { class: 'ic', style: { width: '20px', height: '20px' } }, icon(obj.icon || fallback, 19, obj.color ? 'var(--accent-text)' : 'currentColor'));
+
   function renderChecklist() {
     data.sections.forEach((sec, si) => {
       const done = sec.items.filter((i) => ticks.has(i.id)).length;
-      const box = h('section', { class: 'l-sec' });
+      const box = accentOf(h('section', { class: 'l-sec' }), sec.color);
       const head = h('header', {});
-      if (editing) head.append(h('div', { class: 'grow' }, input(sec.title, 'Nome da seção', (v) => { sec.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir seção', () => move(data.sections, si, -1)), tool('arrow-down', 'Descer seção', () => move(data.sections, si, 1)), tool('trash', 'Excluir seção', () => del(data.sections, si, `a seção "${sec.title}"`), 'danger')));
-      else head.append(h('span', {}, sec.title), h('span', { class: 'prog' }, `${done}/${sec.items.length}`));
+      if (editing) head.append(iconBtn(sec, 'list', sec.title), h('div', { class: 'grow' }, input(sec.title, 'Nome da seção', (v) => { sec.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir seção', () => move(data.sections, si, -1)), tool('arrow-down', 'Descer seção', () => move(data.sections, si, 1)), tool('trash', 'Excluir seção', () => del(data.sections, si, `a seção "${sec.title}"`), 'danger')));
+      else head.append(headIcon(sec, 'list'), h('span', { class: 'sec-title' }, sec.title), h('span', { class: 'prog' }, h('span', { class: 'prog-bar' }, h('i', { style: { width: sec.items.length ? (done / sec.items.length * 100) + '%' : '0%' } })), `${done}/${sec.items.length}`));
       box.append(head);
       sec.items.forEach((it, ii) => {
         const row = h('div', { class: `l-item${!editing && ticks.has(it.id) ? ' done' : ''}` });
@@ -72,9 +78,9 @@ export async function mountList(root, kind) {
           row.append(h('div', { class: 'l-edit' }, input(it.text, 'Procedimento', (v) => { it.text = v; }), h('div', { class: 'row' }, input(it.note, 'Observação (opcional)', (v) => { it.note = v; }, { style: { flex: 1, minWidth: '160px', height: '32px' } }), docSelect(it.doc, (v) => { it.doc = v; }))),
             h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(sec.items, ii, -1)), tool('arrow-down', 'Descer', () => move(sec.items, ii, 1)), tool('trash', 'Excluir item', () => del(sec.items, ii, 'este item'), 'danger')));
         } else {
-          const cb = h('input', { type: 'checkbox', checked: ticks.has(it.id), 'aria-label': it.text, style: { width: '18px', height: '18px', marginTop: '3px', accentColor: 'var(--primary)' }, onchange: (e) => { e.target.checked ? ticks.add(it.id) : ticks.delete(it.id); LS.set(ticksKey, JSON.stringify([...ticks])); render(); } });
+          const cb = h('input', { type: 'checkbox', checked: ticks.has(it.id), 'aria-label': it.text, style: { width: '18px', height: '18px', marginTop: '3px', accentColor: 'var(--accent, var(--primary))' }, onchange: (e) => { e.target.checked ? ticks.add(it.id) : ticks.delete(it.id); LS.set(ticksKey, JSON.stringify([...ticks])); render(); } });
           const doc = it.doc && Tree.findByPath(m, it.doc);
-          row.append(cb, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null), doc ? h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 12), 'Tutorial') : null);
+          row.append(cb, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null)); if (doc) row.append(h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 12), 'Tutorial'));
         }
         box.append(row);
       });
@@ -86,10 +92,10 @@ export async function mountList(root, kind) {
 
   function renderMessages() {
     data.groups.forEach((g, gi) => {
-      const box = h('section', { class: 'l-sec' });
+      const box = accentOf(h('section', { class: 'l-sec' }), g.color);
       const head = h('header', {});
-      if (editing) head.append(h('div', { class: 'grow' }, input(g.title, 'Nome do grupo', (v) => { g.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir grupo', () => move(data.groups, gi, -1)), tool('arrow-down', 'Descer grupo', () => move(data.groups, gi, 1)), tool('trash', 'Excluir grupo', () => del(data.groups, gi, `o grupo "${g.title}"`), 'danger')));
-      else head.append(h('span', {}, g.title));
+      if (editing) head.append(iconBtn(g, 'mail', g.title), h('div', { class: 'grow' }, input(g.title, 'Nome do grupo', (v) => { g.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir grupo', () => move(data.groups, gi, -1)), tool('arrow-down', 'Descer grupo', () => move(data.groups, gi, 1)), tool('trash', 'Excluir grupo', () => del(data.groups, gi, `o grupo "${g.title}"`), 'danger')));
+      else head.append(headIcon(g, 'mail'), h('span', { class: 'sec-title' }, g.title));
       const grid = h('div', { class: 'msg-grid' });
       g.messages.forEach((msg, mi) => {
         const card = h('div', { class: 'msg-card' });
@@ -97,7 +103,7 @@ export async function mountList(root, kind) {
           const ta = h('textarea', { class: 'input', rows: 4, 'aria-label': 'Texto da mensagem', oninput: (e) => { msg.text = e.target.value; }, onchange: () => save() }); ta.value = msg.text || '';
           card.append(h('div', { class: 'top' }, h('div', { class: 'grow' }, input(msg.title, 'Título da mensagem', (v) => { msg.title = v; })), h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(g.messages, mi, -1)), tool('arrow-down', 'Descer', () => move(g.messages, mi, 1)), tool('trash', 'Excluir mensagem', () => del(g.messages, mi, 'esta mensagem'), 'danger'))), ta);
         } else {
-          const b = h('button', { class: 'btn primary sm', onclick: async () => { const ok = await copy(msg.text || ''); toast(ok ? 'Mensagem copiada!' : 'Não foi possível copiar.', { type: ok ? 'ok' : 'error', ms: 1800 }); b.replaceChildren(icon('check', 14), 'Copiado'); setTimeout(() => b.replaceChildren(icon('copy', 14), 'Copiar'), 1500); } }, icon('copy', 14), 'Copiar');
+          const b = h('button', { class: 'btn primary sm copy-btn', onclick: async () => { const ok = await copy(msg.text || ''); toast(ok ? 'Mensagem copiada!' : 'Não foi possível copiar.', { type: ok ? 'ok' : 'error', ms: 1800 }); b.replaceChildren(icon('check', 14), 'Copiado'); setTimeout(() => b.replaceChildren(icon('copy', 14), 'Copiar'), 1500); } }, icon('copy', 14), 'Copiar');
           card.append(h('div', { class: 'top' }, h('h3', {}, msg.title), b), h('div', { class: 'msg-text' }, msg.text));
         }
         grid.append(card);
@@ -112,7 +118,9 @@ export async function mountList(root, kind) {
     const y = scrollY; clear(main);
     const tg = document.getElementById('edtoggle'); if (tg) tg.replaceChildren(icon(editing ? 'check' : 'pen', 14), editing ? 'Concluir edição' : 'Editar');
     const titleEl = editing ? input(data.title, 'Título da página', (v) => { data.title = v; }, { style: { fontSize: '22px', fontWeight: 700, height: '42px', maxWidth: '420px' } }) : h('h1', {}, data.title || C.title);
-    const head = h('div', { class: 'l-head' }, titleEl);
+    const head = accentOf(h('div', { class: 'l-head' }, titleEl), data.color);
+    if (data.color) head.classList.remove('colored');
+    if (editing) head.append(h('button', { class: 'btn sm', onclick: (e) => pickColor(e.currentTarget, data.color || '', (c) => { data.color = c; save(); closeMenu(); render(); }) }, h('i', { style: { width: '12px', height: '12px', borderRadius: '50%', background: data.color || 'var(--muted)', display: 'inline-block' } }), 'Cor do título'));
     if (!editing && kind === 'checklist') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { ticks.clear(); LS.set(ticksKey, '[]'); render(); } }, 'Limpar marcações'));
     main.append(head, h('p', { class: 'muted', style: { marginTop: '-12px' } }, C.sub));
     if (!(data[C.key] || []).length && !editing) main.append(h('div', { class: 'v-empty' }, 'Nada por aqui ainda.'));

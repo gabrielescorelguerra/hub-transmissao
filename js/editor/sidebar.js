@@ -37,7 +37,7 @@ export function createSidebar(ed) {
     const r = h('div', { class: `t-row${ed.sel === n.id ? ' sel' : ''}${n.hidden ? ' hid' : ''}`, role: 'treeitem', 'aria-selected': String(ed.sel === n.id), 'aria-expanded': isCat ? String(open) : undefined, tabindex: '0', draggable: 'true', dataset: { id: n.id }, style: { paddingLeft: 4 + depth * 16 + 'px' } });
     r.append(h('span', { class: 'grip', 'aria-hidden': 'true' }, icon('grip', 12)));
     r.append(isCat ? h('span', { class: `chev${open ? ' open' : ''}`, onclick: (e) => { e.stopPropagation(); toggle(n); } }, icon('chev-r', 13)) : h('span', { class: 'chev' }));
-    r.append(h('span', { class: 'ic', title: 'Mudar ícone', onclick: (e) => { e.stopPropagation(); ed.chooseIcon(n); } }, icon(n.icon || (isCat ? 'folder' : 'file-text'), 17, n.iconColor || 'currentColor')));
+    r.append(h('span', { class: 'ic', title: 'Mudar ícone', onclick: (e) => { e.stopPropagation(); ed.chooseIcon(n); } }, icon(n.icon || (isCat ? 'folder' : 'file-text'), 17, Tree.colorOf(ed.manifest(), n.id) || 'currentColor')));
     if (renaming === n.id) {
       r.classList.add('rename');
       const inp = h('input', { value: n.label, 'aria-label': 'Novo nome' });

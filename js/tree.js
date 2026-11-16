@@ -42,6 +42,15 @@ export function ancestors(m, id) {
   return chain;
 }
 
+/** Cor efetiva: a do nó ou a da seção mais próxima que tenha cor. */
+export function colorOf(m, id) {
+  const f = find(m, id); if (!f) return '';
+  if (f.node.iconColor) return f.node.iconColor;
+  const chain = ancestors(m, id);
+  for (let i = chain.length - 1; i >= 0; i--) if (chain[i].iconColor) return chain[i].iconColor;
+  return '';
+}
+
 const uniq = (base, taken) => { let s = base, i = 2; while (taken.has(s)) s = `${base}-${i++}`; return s; };
 
 export function folderOf(m, parentId) {

@@ -1,4 +1,4 @@
-import { h, icon, modal } from '../ui.js';
+import { h, icon, modal, colorField } from '../ui.js';
 import { pickerIcons, ICON_COLORS, CATEGORIES } from '../icons.js';
 
 const EMOJIS = ['📄', '📘', '📷', '🎥', '📡', '🌐', '🔒', '⚙️', '🛠️', '💡', '⭐', '🚀', '🔔', '📌', '📁', '🖥️', '📱', '🎙️', '🎧', '📶', '🧩', '🧰', '✅', '⚠️', '❓', '🔗', '📊', '🗂️', '👥', '🏠'];
@@ -34,7 +34,7 @@ export function pickIcon({ current = 'file-text', color = '', label = '' }) {
       tabs.replaceChildren(...[['icones', 'Ícones'], ['emoji', 'Emoji']].map(([k, l]) => h('button', { type: 'button', class: tab === k ? 'on' : '', onclick: () => { tab = k; renderChrome(); renderGrid(); } }, l)));
       cats.replaceChildren(...(tab === 'icones' ? CATEGORIES.map((c) => h('button', { type: 'button', class: c === cat ? 'on' : '', onclick: () => { cat = c; renderChrome(); renderGrid(); } }, c)) : []));
       search.classList.toggle('hidden', tab !== 'icones');
-      swatches.replaceChildren(h('span', { class: 'label' }, 'Cor'), ...ICON_COLORS.map((c) => h('button', { type: 'button', class: `swatch${c === col ? ' on' : ''}`, 'aria-label': c || 'Padrão', onclick: () => { col = c; renderChrome(); renderPreview(); renderGrid(); } }, h('i', { style: { background: c || 'var(--muted)' } }))));
+      swatches.replaceChildren(h('span', { class: 'label' }, 'Cor'), colorField(col, (c) => { col = c; renderPreview(); renderGrid(); }));
       swatches.classList.toggle('hidden', tab !== 'icones');
     };
     body.append(h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } }, preview, h('div', { class: 'grow' }, search), tabs), cats, grid, swatches);

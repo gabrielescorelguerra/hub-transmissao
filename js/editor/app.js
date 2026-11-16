@@ -57,6 +57,11 @@ export async function mountEditor(root, initialPath) {
   };
 
   // ───────── operações de estrutura ─────────
+  ed.applyAccent = () => {
+    const n = ed.node(); const pg = document.querySelector('.ed-canvas .page'); if (!pg || !n) return;
+    const c = Tree.colorOf(S.manifest(), n.id);
+    pg.classList.toggle('accented', !!c); if (c) pg.style.setProperty('--accent', c); else pg.style.removeProperty('--accent');
+  };
   ed.updateMeta = async (node, patch) => {
     const fmPatch = {}; const mPatch = {};
     if ('title' in patch) fmPatch.title = patch.title;
@@ -172,7 +177,7 @@ export async function mountEditor(root, initialPath) {
   function renderCenter() {
     const n = ed.node();
     clear(canvas);
-    if (n?.type === 'page' && ed.doc) visual.mount(canvas);
+    if (n?.type === 'page' && ed.doc) { visual.mount(canvas); ed.applyAccent(); }
     else if (n?.type === 'category') renderCategory(canvas, n);
     else canvas.append(h('div', { class: 'empty-state' }, icon('file-text', 32), h('b', {}, 'Nenhuma página selecionada'), h('p', {}, 'Escolha uma página na barra lateral ou crie uma nova.'), h('button', { class: 'btn primary', onclick: () => ed.createPage(null) }, icon('plus', 15), 'Nova página')));
   }

@@ -1,5 +1,5 @@
 // Painel de propriedades (Página / Seção / SEO).
-import { h, icon, clear } from '../ui.js';
+import { h, icon, clear, colorField } from '../ui.js';
 import { pagePath } from '../config.js';
 import * as S from '../store.js';
 import * as Tree from '../tree.js';
@@ -35,13 +35,16 @@ export function createPanel(ed) {
 
     const body = h('div', { class: 'panel-body' });
     const iconRow = h('div', { class: 'field' }, h('label', {}, 'Ícone no menu'),
-      h('div', { class: 'icon-row' }, h('span', { class: 'icon-tile' }, icon(n.icon || (n.type === 'category' ? 'folder' : 'file-text'), 20, n.iconColor || 'currentColor')),
+      h('div', { class: 'icon-row' }, h('span', { class: 'icon-tile' }, icon(n.icon || (n.type === 'category' ? 'folder' : 'file-text'), 20, Tree.colorOf(ed.manifest(), n.id) || 'currentColor')),
         h('div', { class: 'grow' }, h('div', { style: { fontWeight: 500 } }, n.icon?.startsWith('emoji:') ? 'Emoji' : n.icon || 'padrão'), h('div', { class: 'muted small' }, 'Aparece na sidebar do site')),
         h('button', { class: 'btn sm', onclick: () => ed.chooseIcon(n) }, 'Trocar')));
+    const colorRow = h('div', { class: 'field' }, h('label', {}, n.type === 'category' ? 'Cor da seção' : 'Cor da página'),
+      colorField(n.iconColor || '', async (c) => { await ed.updateMeta(n, { iconColor: c }); ed.applyAccent(); }, { live: false }),
+      h('span', { class: 'hint' }, n.type === 'category' ? 'Pinta o ícone e é herdada pelas páginas desta seção.' : 'Pinta o título e o ícone no site. Vazio = cor da seção.'));
     const labelIn = h('input', { class: 'input', value: n.label, 'aria-label': 'Nome no menu', onchange: (e) => { const v = e.target.value.trim(); if (v) ed.updateMeta(n, { label: v }); else e.target.value = n.label; } });
 
     if (n.type === 'category') {
-      body.append(field('Nome da seção', labelIn), iconRow,
+      body.append(field('Nome da seção', labelIn), iconRow, colorRow,
         h('div', { class: 'toggle-row' }, h('span', {}, 'Iniciar recolhida no site'), toggle(n.collapsed, (v) => ed.updateMeta(n, { collapsed: v }), 'Iniciar recolhida')),
         h('div', { class: 'toggle-row' }, h('span', {}, 'Ocultar do menu'), toggle(n.hidden, (v) => ed.updateMeta(n, { hidden: v }), 'Ocultar do menu')),
         h('hr', { class: 'hr' }),
@@ -49,7 +52,7 @@ export function createPanel(ed) {
         h('button', { class: 'btn danger', onclick: () => ed.deleteNode(n) }, icon('trash', 14), 'Excluir seção'));
     } else if (tab === 'page') {
       const slug = h('input', { class: 'input', value: n.path, 'aria-label': 'Endereço', style: { fontFamily: 'var(--mono)', fontSize: '12.5px' }, onchange: async (e) => { if (!(await ed.renamePath(n, e.target.value))) e.target.value = n.path; } });
-      body.append(field('Nome no menu', labelIn, 'Pode ser diferente do título da página.'), iconRow, field('Endereço (caminho)', slug, 'Renomear move o arquivo ao publicar.'),
+      body.append(field('Nome no menu', labelIn, 'Pode ser diferente do título da página.'), iconRow, colorRow, field('Endereço (caminho)', slug, 'Renomear move o arquivo ao publicar.'),
         h('hr', { class: 'hr' }),
         h('div', { class: 'toggle-row' }, h('span', {}, 'Mostrar índice (TOC)'), toggle(ed.doc?.fm.toc !== false, (v) => ed.updateMeta(n, { toc: v }), 'Mostrar índice')),
         h('div', { class: 'toggle-row' }, h('span', {}, 'Ocultar do menu'), toggle(n.hidden, (v) => ed.updateMeta(n, { hidden: v }), 'Ocultar do menu')),

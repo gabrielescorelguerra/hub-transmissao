@@ -4,6 +4,7 @@ import * as S from './store.js';
 applyTheme();
 const app = $('#app');
 let cleanup = null;
+let viewer = null;   // casca persistente do site de leitura
 let seq = 0;
 
 function parseHash() {
@@ -18,8 +19,12 @@ function parseHash() {
 async function route() {
   const my = ++seq;
   const r = parseHash();
+  if (r.area === 'docs' && viewer && r.path) {   // navegação dentro da documentação: só troca o conteúdo
+    try { await viewer.update(r.path); } catch (e) { console.error(e); toast(e.message || 'Erro ao abrir a página', { type: 'error' }); }
+    return;
+  }
   try { cleanup?.(); } catch (e) { console.error(e); }
-  cleanup = null;
+  cleanup = null; viewer = null;
   clear(app);
   app.append(h('div', { class: 'v-empty' }, 'Carregando…'));
   try {
@@ -47,7 +52,7 @@ async function route() {
     } else {
       const { mountViewer } = await import('./viewer.js');
       if (my !== seq) return;
-      clear(app); cleanup = await mountViewer(app, r.path);
+      clear(app); const v = await mountViewer(app, r.path); viewer = v.live ? v : null; cleanup = v.cleanup;
     }
   } catch (e) {
     console.error(e);

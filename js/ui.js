@@ -1,12 +1,12 @@
 // Utilitários de interface (sem dependências).
-import { iconHtml } from './icons.js';
+import { iconHtml, ICON_COLORS } from './icons.js';
 
 export function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
     if (v === undefined || v === null || v === false) continue;
     if (k === 'class') el.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'style' && typeof v === 'object') { for (const [sk, sv] of Object.entries(v)) { if (sk.startsWith('--')) el.style.setProperty(sk, sv); else el.style[sk] = sv; } }
     else if (k === 'html') el.innerHTML = v;
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'dataset') Object.assign(el.dataset, v);
@@ -108,3 +108,34 @@ export function toggleTheme() {
 }
 
 export const debounce = (fn, ms) => { let t; const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; d.flush = (...a) => { clearTimeout(t); fn(...a); }; d.cancel = () => clearTimeout(t); return d; };
+
+// ───────────── Cores ─────────────
+/** Seletor de cor: paleta + cor livre + "padrão". `onChange(hex|'')`. */
+export function colorField(value, onChange, { live = true } = {}) {
+  const wrap = h('div', { class: 'color-field' });
+  const draw = () => {
+    clear(wrap);
+    ICON_COLORS.forEach((c) => wrap.append(h('button', { type: 'button', class: `swatch${c.toLowerCase() === (value || '').toLowerCase() ? ' on' : ''}`, title: c || 'Padrão', 'aria-label': c || 'Cor padrão', onclick: () => { value = c; onChange(c); draw(); } }, h('i', { style: { background: c || 'var(--muted)' } }))));
+    const custom = h('input', { type: 'color', class: 'color-custom', 'aria-label': 'Cor personalizada', value: /^#[0-9a-f]{6}$/i.test(value || '') ? value : '#3d6bf2', [live ? 'oninput' : 'onchange']: (e) => { value = e.target.value.toUpperCase(); onChange(value); wrap.querySelectorAll('.swatch.on').forEach((x) => x.classList.remove('on')); } });
+    wrap.append(custom);
+  };
+  draw();
+  return wrap;
+}
+
+/** Popover genérico ancorado em um elemento. */
+export function popover(anchor, content) {
+  closeMenu();
+  const el = h('div', { class: 'menu pop', role: 'dialog' }, content);
+  document.body.append(el);
+  const r = anchor.getBoundingClientRect();
+  const w = el.offsetWidth, hh = el.offsetHeight;
+  let top = r.bottom + 6; if (top + hh > innerHeight - 8) top = Math.max(8, r.top - hh - 6);
+  Object.assign(el.style, { left: Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px', top: top + 'px' });
+  const off = (e) => { if (!el.contains(e.target) && !anchor.contains(e.target)) closeMenu(); };
+  const key = (e) => { if (e.key === 'Escape') closeMenu(); };
+  setTimeout(() => { document.addEventListener('mousedown', off, true); document.addEventListener('keydown', key, true); }, 0);
+  openMenu = () => { el.remove(); document.removeEventListener('mousedown', off, true); document.removeEventListener('keydown', key, true); };
+  return el;
+}
+export function pickColor(anchor, value, onChange) { return popover(anchor, h('div', { style: { padding: '8px' } }, h('div', { class: 'label', style: { marginBottom: '8px' } }, 'Cor'), colorField(value, onChange))); }
