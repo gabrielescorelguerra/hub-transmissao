@@ -1,5 +1,5 @@
 // Páginas "Checklist" e "Mensagens da transmissão": leitura para todos, edição para quem fez login.
-import { h, icon, clear, toast, ask, toggleTheme, pickColor, closeMenu } from './ui.js';
+import { h, icon, clear, toast, ask, pickColor, closeMenu } from './ui.js';
 import { pickIcon } from './editor/iconpicker.js';
 import { attachPreview } from './hovercard.js';
 import { CONFIG } from './config.js';
@@ -28,7 +28,7 @@ async function copy(text) {
   }
 }
 
-export async function mountList(root, kind) {
+export async function mountList(root, kind, ctx = {}) {
   const C = CFG[kind];
   const m = await S.loadManifest();
   const load = async () => { const t = await S.readText(C.path); try { return t ? JSON.parse(t) : structuredClone(C.empty); } catch { return structuredClone(C.empty); } };
@@ -40,15 +40,11 @@ export async function mountList(root, kind) {
   const pages = Tree.pages(m).filter((p) => !p.hidden);
   const save = () => S.setText(C.path, JSON.stringify(data, null, 2) + '\n');
 
-  const themeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Alternar tema', onclick: () => { toggleTheme(); } }, icon('moon', 18));
-  const top = h('header', { class: 'v-top' },
-    h('a', { class: 'brand', href: '#/' }, h('span', { class: 'logo' }, icon('book', 16, '#fff')), m.title || CONFIG.siteName),
-    h('nav', { class: 'topnav' }, h('a', { href: '#/' }, 'Documentação'), h('a', { href: '#/checklist', class: kind === 'checklist' ? 'active' : '' }, 'Checklist'), h('a', { href: '#/mensagens', class: kind === 'mensagens' ? 'active' : '' }, 'Mensagens')),
-    h('span', { class: 'grow' }), themeBtn,
-    logged() ? h('button', { class: 'btn sm', id: 'edtoggle', onclick: () => { editing = !editing; render(); } }, icon('pen', 14), 'Editar')
-      : h('a', { class: 'btn ghost sm', href: '#/login/' + kind }, 'Entrar para editar'));
+  const edBtn = logged() ? h('button', { class: 'btn sm', onclick: () => { editing = !editing; render(); } }, icon('pen', 14), 'Editar')
+    : h('a', { class: 'btn ghost sm', href: '#/login/' + kind }, 'Entrar');
+  ctx.brand = m.title || CONFIG.siteName; ctx.action = edBtn;
   const main = h('main', { class: 'l-main' });
-  root.append(top, main);
+  root.append(main);
 
   const move = (arr, i, d) => { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; save(); render(); };
   const tool = (ic, label, fn, cls = '') => h('button', { class: `icon-btn ${cls}`, title: label, 'aria-label': label, style: { width: '28px', height: '28px' }, onclick: fn }, icon(ic, 14));
@@ -83,9 +79,17 @@ export async function mountList(root, kind) {
           row.append(h('div', { class: 'l-edit' }, input(it.text, 'Procedimento', (v) => { it.text = v; }), h('div', { class: 'row' }, input(it.note, 'Observação (opcional)', (v) => { it.note = v; }, { style: { flex: 1, minWidth: '160px', height: '32px' } }), docSelect(it.doc, (v) => { it.doc = v; }))),
             h('div', { class: 'l-tools' }, tool('arrow-up', 'Subir', () => move(sec.items, ii, -1)), tool('arrow-down', 'Descer', () => move(sec.items, ii, 1)), tool('trash', 'Excluir item', () => del(sec.items, ii, 'este item'), 'danger')));
         } else {
-          const cb = h('input', { type: 'checkbox', checked: ticks.has(it.id), 'aria-label': it.text, style: { width: '18px', height: '18px', marginTop: '3px', accentColor: 'var(--accent, var(--primary))' }, onchange: (e) => { e.target.checked ? ticks.add(it.id) : ticks.delete(it.id); LS.set(ticksKey, JSON.stringify([...ticks])); row.classList.toggle('done', e.target.checked); updateProg(); } });
           const doc = it.doc && Tree.findByPath(m, it.doc);
-          row.append(cb, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null)); if (doc) { const a = h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 12), doc.label); attachPreview(a, it.doc, doc.label); row.append(a); }
+          const mark = h('span', { class: 'cbx', 'aria-hidden': 'true' }, null);
+          mark.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          row.classList.add('l-click'); row.tabIndex = 0; row.setAttribute('role', 'checkbox'); row.setAttribute('aria-label', it.text);
+          const paint = (v) => { row.classList.toggle('done', v); row.setAttribute('aria-checked', String(v)); };
+          paint(ticks.has(it.id));
+          const toggle = () => { const v = !ticks.has(it.id); v ? ticks.add(it.id) : ticks.delete(it.id); LS.set(ticksKey, JSON.stringify([...ticks])); paint(v); updateProg(); navigator.vibrate?.(8); };
+          row.addEventListener('click', (e) => { if (e.target.closest('a')) return; toggle(); });
+          row.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && e.target === row) { e.preventDefault(); toggle(); } });
+          row.append(mark, h('div', { class: 'l-text' }, it.text, it.note ? h('div', { class: 'l-note' }, it.note) : null));
+          if (doc) { const a = h('a', { class: 'l-doc', href: '#/docs/' + it.doc }, icon('book', 13), doc.label); attachPreview(a, it.doc, doc.label, { sheet: true }); row.append(a); }
         }
         box.append(row);
       });
@@ -123,12 +127,12 @@ export async function mountList(root, kind) {
   function render() {
     const y = scrollY; clear(main);
     main.classList.toggle('noanim', rendered); rendered = true;
-    const tg = document.getElementById('edtoggle'); if (tg) tg.replaceChildren(icon(editing ? 'check' : 'pen', 14), editing ? 'Concluir edição' : 'Editar');
+    if (logged()) edBtn.replaceChildren(icon(editing ? 'check' : 'pen', 14), editing ? 'Concluir edição' : 'Editar');
     const titleEl = editing ? input(data.title, 'Título da página', (v) => { data.title = v; }, { style: { fontSize: '22px', fontWeight: 700, height: '42px', maxWidth: '420px' } }) : h('h1', {}, data.title || C.title);
     const head = accentOf(h('div', { class: 'l-head' }, titleEl), data.color);
     if (data.color) head.classList.remove('colored');
     if (editing) head.append(h('button', { class: 'btn sm', onclick: (e) => pickColor(e.currentTarget, data.color || '', (c) => { data.color = c; save(); closeMenu(); render(); }) }, h('i', { style: { width: '12px', height: '12px', borderRadius: '50%', background: data.color || 'var(--muted)', display: 'inline-block' } }), 'Cor do título'));
-    if (!editing && kind === 'checklist') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { ticks.clear(); LS.set(ticksKey, '[]'); main.querySelectorAll('.l-item.done').forEach((r) => r.classList.remove('done')); main.querySelectorAll('input[type=checkbox]').forEach((c) => { c.checked = false; }); main.querySelectorAll('.l-sec').forEach((sec) => { sec.querySelector('.prog-bar i') && (sec.querySelector('.prog-bar i').style.width = '0%'); const t = sec.querySelector('.prog > span:last-child'); if (t) t.textContent = t.textContent.replace(/^\d+/, '0'); }); } }, 'Limpar marcações'));
+    if (!editing && kind === 'checklist') head.append(h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { ticks.clear(); LS.set(ticksKey, '[]'); main.querySelectorAll('.l-item.done').forEach((r) => { r.classList.remove('done'); r.setAttribute('aria-checked', 'false'); }); main.querySelectorAll('.l-sec').forEach((sec) => { sec.querySelector('.prog-bar i') && (sec.querySelector('.prog-bar i').style.width = '0%'); const t = sec.querySelector('.prog > span:last-child'); if (t) t.textContent = t.textContent.replace(/^\d+/, '0'); }); } }, 'Limpar marcações'));
     main.append(head, h('p', { class: 'muted', style: { marginTop: '-12px' } }, C.sub));
     if (!(data[C.key] || []).length && !editing) main.append(h('div', { class: 'v-empty' }, 'Nada por aqui ainda.'));
     (kind === 'checklist' ? renderChecklist : renderMessages)();

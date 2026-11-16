@@ -139,3 +139,13 @@ export function popover(anchor, content) {
   return el;
 }
 export function pickColor(anchor, value, onChange) { return popover(anchor, h('div', { style: { padding: '8px' } }, h('div', { class: 'label', style: { marginBottom: '8px' } }, 'Cor'), colorField(value, onChange))); }
+
+// ───────────── Transições de tela (View Transitions API, com fallback) ─────────────
+export const prefersReduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Executa `update` (troca de DOM) com crossfade nativo. `names`: [[elemento, nome]] nomeados só durante a transição. */
+export async function withTransition(update, names = []) {
+  if (!document.startViewTransition || prefersReduced()) { await update(); return; }
+  names.forEach(([el, n]) => { el.style.viewTransitionName = n; });
+  try { const t = document.startViewTransition(async () => { await update(); }); await t.finished; } catch { /* transição cancelada: o DOM já foi trocado */ }
+  names.forEach(([el]) => { el.style.viewTransitionName = ''; });
+}

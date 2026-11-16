@@ -26,8 +26,30 @@ async function show(anchor, path, label) {
   Object.assign(card.style, { left: left + 'px', top: top + 'px' });
 }
 
-export function attachPreview(el, path, label) {
-  const start = () => { clearTimeout(hideT); clearTimeout(showT); if (current === el && card) return; current = el; showT = setTimeout(() => show(el, path, label), 280); };
+const isTouch = () => matchMedia('(hover: none)').matches;
+let sheet = null;
+export function closeSheet() { sheet?.remove(); sheet = null; }
+async function openSheet(path, label) {
+  closeSheet();
+  const body = h('div', { class: 'hc-body prose' }, h('p', { class: 'muted' }, 'Carregando…'));
+  const close = () => { const el = sheet; if (!el) return; el.classList.remove('open'); setTimeout(() => el.remove(), 220); sheet = null; document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const el = h('div', { class: 'sheet-wrap', onclick: (e) => { if (e.target === el) close(); } },
+    h('div', { class: 'sheet', role: 'dialog', 'aria-label': label || 'Prévia do tutorial' },
+      h('div', { class: 'sheet-grip' }),
+      h('div', { class: 'hc-head' }, h('b', { class: 'grow' }, label || path), h('a', { class: 'btn primary sm', href: '#/docs/' + path, onclick: close }, 'Abrir página'), h('button', { class: 'icon-btn', 'aria-label': 'Fechar', onclick: close }, '✕')),
+      body));
+  document.body.append(el); sheet = el; document.addEventListener('keydown', onKey);
+  requestAnimationFrame(() => el.classList.add('open'));
+  const page = await S.loadPage(path).catch(() => null);
+  if (!page) { body.textContent = 'Não foi possível carregar este tutorial.'; return; }
+  const { html } = renderMarkdown(page.body, { resolve: S.resolveUrl });
+  body.innerHTML = html;
+}
+
+export function attachPreview(el, path, label, { sheet: useSheet = false } = {}) {
+  if (useSheet) el.addEventListener('click', (e) => { if (isTouch()) { e.preventDefault(); e.stopPropagation(); hide(); openSheet(path, label); } });
+  const start = () => { if (isTouch()) return; clearTimeout(hideT); clearTimeout(showT); if (current === el && card) return; current = el; showT = setTimeout(() => show(el, path, label), 280); };
   el.addEventListener('mouseenter', start);
   el.addEventListener('focus', start);
   el.addEventListener('mouseleave', scheduleHide);

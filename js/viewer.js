@@ -1,5 +1,5 @@
 // Site de leitura. A "casca" (topo, sidebar) é montada uma vez; ao navegar só o conteúdo troca (fluido, sem piscar).
-import { h, icon, clear, toggleTheme } from './ui.js';
+import { h, icon, clear, withTransition } from './ui.js';
 import { CONFIG } from './config.js';
 import * as S from './store.js';
 import * as Tree from './tree.js';
@@ -9,7 +9,7 @@ import { attachPreview } from './hovercard.js';
 const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export async function mountViewer(root, firstPath) {
+export async function mountViewer(root, firstPath, ctx = {}) {
   const m = await S.loadManifest();
   const logged = !!S.state.auth;
   const visible = (n) => !n.hidden && (logged || !n.draft);
@@ -24,19 +24,11 @@ export async function mountViewer(root, firstPath) {
   }
   if (!firstPath) { location.replace('#/docs/' + flat[0].path); return { cleanup: () => {}, update: async () => {} }; }
 
-  // ── topo
+  // ── topo: a casca (shell) é única; aqui só entregamos busca, menu e botão de ação
   const side = h('aside', { class: 'v-side', 'aria-label': 'Navegação' });
   const searchBox = buildSearch(flat);
-  const themeIcon = () => icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', 18);
-  const themeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Alternar tema', onclick: () => { toggleTheme(); themeBtn.replaceChildren(themeIcon()); } }, themeIcon());
   const actionBtn = h('a', { class: 'btn sm' });
-  const top = h('header', { class: 'v-top' },
-    h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Abrir menu', onclick: () => side.classList.toggle('open') }, icon('menu', 20)),
-    h('a', { class: 'brand', href: '#/' }, h('span', { class: 'logo' }, icon('book', 16, '#fff')), m.title || CONFIG.siteName),
-    h('nav', { class: 'topnav' }, h('a', { href: '#/', class: 'active' }, 'Documentação'), h('a', { href: '#/checklist' }, 'Checklist'), h('a', { href: '#/mensagens' }, 'Mensagens')),
-    h('span', { class: 'grow' }), searchBox.el,
-    h('a', { class: 'btn ghost sm gh', href: `https://github.com/${CONFIG.owner}/${CONFIG.repo}`, target: '_blank', rel: 'noopener noreferrer' }, icon('github', 15), 'GitHub'),
-    themeBtn, actionBtn);
+  ctx.brand = m.title || CONFIG.siteName; ctx.search = searchBox.el; ctx.action = actionBtn; ctx.menu = () => side.classList.toggle('open');
 
   // ── sidebar (DOM persistente: abrir/fechar anima sem recriar)
   const navLinks = new Map(), catEls = new Map();
@@ -70,12 +62,13 @@ export async function mountViewer(root, firstPath) {
   const main = h('main', { class: 'v-main', id: 'conteudo' });
   main.addEventListener('mouseover', (e) => { const a = e.target.closest?.('.prose a[href^="#/docs/"]'); if (a && !a.dataset.pv) { a.dataset.pv = '1'; const p = decodeURIComponent(a.getAttribute('href').slice(7)); attachPreview(a, p, a.textContent); a.dispatchEvent(new MouseEvent('mouseenter')); } });
   const tocEl = h('nav', { class: 'v-toc', 'aria-label': 'Nesta página' });
-  root.append(top, h('div', { class: 'v-wrap' }, side, main, tocEl));
+  root.append(h('div', { class: 'v-wrap' }, side, main, tocEl));
 
   const editHref = (p) => '#/editor' + (p ? '/' + p : '');
-  const showPage = async (path) => {
+  const showPage = async (path, animate = false) => {
     const node = Tree.findByPath(m, path);
     const page = node ? await S.loadPage(path) : null;
+    const apply = () => {
     observer?.disconnect(); clear(main); clear(tocEl);
     navLinks.forEach((a, p) => { a.classList.toggle('on', p === path); a.setAttribute('aria-current', p === path ? 'page' : 'false'); });
     actionBtn.className = logged ? 'btn sm' : 'btn ghost sm'; actionBtn.href = logged ? editHref(path) : '#/login/editor';
@@ -100,26 +93,27 @@ export async function mountViewer(root, firstPath) {
     const pg = (p, cls, lab) => h('a', { class: cls, href: '#/docs/' + p.path, onmouseenter: () => S.loadPage(p.path).catch(() => {}) }, h('small', {}, lab), h('b', {}, p.label));
     main.append(crumbs, h('h1', { class: 'doc-title' }, accent ? h('span', { class: 'title-ic' }, icon(node.icon || 'file-text', 30, accent)) : null, title), h('article', { class: 'prose', html }),
       h('div', { class: 'pager' }, prev ? pg(prev, '', '« Anterior') : h('span', { style: { flex: 1 } }), next ? pg(next, 'next', 'Próxima »') : h('span', { style: { flex: 1 } })));
-    // entrada suave
-    if (!reduce()) { main.classList.remove('enter'); void main.offsetWidth; main.classList.add('enter'); }
+    if (!animate && !reduce()) { main.classList.remove('enter'); void main.offsetWidth; main.classList.add('enter'); }
     if (page.fm.toc !== false && toc.length) {
-      toc.forEach((t) => tocEl.append(h('a', { href: `#/docs/${path}`, class: t.level > 2 ? 'l3' : '', dataset: { id: t.id }, onclick: (e) => { e.preventDefault(); document.getElementById(t.id)?.scrollIntoView({ behavior: reduce() ? 'auto' : 'smooth' }); } }, t.text)));
+      toc.forEach((t) => tocEl.append(h('a', { href: `#/docs/${path}`, class: t.level > 2 ? 'l3' : '', dataset: { id: t.id }, onclick: (e) => { e.preventDefault(); main.querySelector('#' + CSS.escape(t.id))?.scrollIntoView({ behavior: reduce() ? 'auto' : 'smooth' }); } }, t.text)));
       observer = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) tocEl.querySelectorAll('a').forEach((a) => a.classList.toggle('on', a.dataset.id === en.target.id)); }), { rootMargin: '-70px 0px -70% 0px' });
-      setTimeout(() => toc.forEach((t) => { const el = document.getElementById(t.id); if (el) observer.observe(el); }), 0);
+      setTimeout(() => toc.forEach((t) => { const el = main.querySelector('#' + CSS.escape(t.id)); if (el) observer.observe(el); }), 0);
     }
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (animate) window.scrollTo({ top: 0, behavior: 'instant' });
     // pré-carrega vizinhas para a próxima navegação ser instantânea
     [prev, next].forEach((p) => p && S.loadPage(p.path).catch(() => {}));
     // mantém o item ativo visível na sidebar
     const act = navLinks.get(path);
     if (act) { const sr = side.getBoundingClientRect(), ar = act.getBoundingClientRect(); if (ar.top < sr.top + 8) side.scrollTop -= sr.top + 8 - ar.top; else if (ar.bottom > sr.bottom - 8) side.scrollTop += ar.bottom - sr.bottom + 8; }
+    };
+    if (animate) await withTransition(apply, [[main, 'vmain']]); else apply();
   };
 
   await showPage(firstPath);
   current = firstPath;
   return {
     live: true,
-    update: async (path) => { if (path === current) return; current = path; await showPage(path); },
+    update: async (path) => { if (path === current) return; current = path; await showPage(path, true); },
     cleanup: () => { observer?.disconnect(); searchBox.destroy(); },
   };
 }
