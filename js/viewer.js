@@ -1,5 +1,6 @@
 // Site de leitura. A "casca" (topo, sidebar) é montada uma vez; ao navegar só o conteúdo troca (fluido, sem piscar).
-import { h, icon, clear, withTransition } from './ui.js';
+import { h, icon, clear } from './ui.js';
+import { motionOn, swapWith } from './motion.js';
 import { CONFIG } from './config.js';
 import * as S from './store.js';
 import * as Tree from './tree.js';
@@ -7,7 +8,7 @@ import { renderMarkdown } from './md.js';
 import { attachPreview } from './hovercard.js';
 
 const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduce = () => !motionOn();
 
 export async function mountViewer(root, firstPath, ctx = {}) {
   const m = await S.loadManifest();
@@ -106,7 +107,7 @@ export async function mountViewer(root, firstPath, ctx = {}) {
     const act = navLinks.get(path);
     if (act) { const sr = side.getBoundingClientRect(), ar = act.getBoundingClientRect(); if (ar.top < sr.top + 8) side.scrollTop -= sr.top + 8 - ar.top; else if (ar.bottom > sr.bottom - 8) side.scrollTop += ar.bottom - sr.bottom + 8; }
     };
-    if (animate) await withTransition(apply, [[main, 'vmain']]); else apply();
+    if (animate) await swapWith(main, () => { apply(); return main; }); else apply();
   };
 
   await showPage(firstPath);

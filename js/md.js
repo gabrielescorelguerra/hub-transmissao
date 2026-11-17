@@ -216,3 +216,38 @@ export function renderBlocks(blocks, { resolve } = {}) {
 }
 
 export function renderMarkdown(body, opts) { return renderBlocks(parseBlocks(body), opts); }
+
+// ───────────── Edição em markdown dentro de um bloco (estilo Obsidian) ─────────────
+/** Fonte markdown editável de um bloco de texto. */
+export const blockSource = (b) => blockToMd({ ...b, dirty: true });
+
+/** Tipo de bloco que o texto digitado representa (só olha a primeira linha). */
+export function detectType(src) {
+  let m;
+  if ((m = /^(#{1,4})\s/.exec(src))) return 'h' + m[1].length;
+  if (/^>\s?/.test(src)) return 'quote';
+  if (/^\s*[-*+]\s/.test(src)) return 'ul';
+  if (/^\s*\d+[.)]\s/.test(src)) return 'ol';
+  return 'p';
+}
+
+/** Converte o texto digitado em blocos (nunca vazio; todos marcados como editados). */
+export function sourceToBlocks(src) {
+  const bl = parseBlocks(src);
+  if (!bl.length) return [{ type: 'p', text: '', dirty: true }];
+  bl.forEach((b) => { b.dirty = true; });
+  return bl;
+}
+
+/** Enter dentro de uma lista: continua o marcador ou sai da lista se o item está vazio. */
+export function listEnter(value, pos, end = pos) {
+  const ls = value.slice(0, pos).lastIndexOf('\n') + 1;
+  let le = value.indexOf('\n', pos); if (le < 0) le = value.length;
+  const line = value.slice(ls, le);
+  if (/^\s*(?:[-*+]|\d+[.)])\s*$/.test(line)) return { exit: true, value: value.slice(0, ls).replace(/\n$/, '') + value.slice(le) };
+  const m = /^(\s*)(?:([-*+])|(\d+)([.)]))\s/.exec(line);
+  if (!m) return null;
+  const marker = m[2] ? `${m[2]} ` : `${Number(m[3]) + 1}${m[4]} `;
+  const ins = `\n${m[1]}${marker}`;
+  return { exit: false, value: value.slice(0, pos) + ins + value.slice(end), caret: pos + ins.length };
+}

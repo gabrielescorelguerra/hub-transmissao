@@ -1,6 +1,6 @@
 // Editor visual por blocos (contenteditable). Cada bloco guarda `src`; só vira "dirty" quando o usuário edita.
 import { h, icon, clear, toast, menu, closeMenu } from '../ui.js';
-import { inlineHtml, htmlToInlineMd } from '../md.js';
+import { inlineHtml, htmlToInlineMd, blockSource, detectType, sourceToBlocks, listEnter } from '../md.js';
 import * as S from '../store.js';
 
 const TEXT_TYPES = ['p', 'h1', 'h2', 'h3', 'h4', 'quote'];
@@ -60,6 +60,7 @@ export function createVisual(ed) {
 
   function focusBlock(i, atEnd = true) {
     const el = blocksEl.children[i]; if (!el) return;
+    const md = el.querySelector('.mdb'); if (md) { md._edit(atEnd); return; }
     const f = el.querySelector('[contenteditable="true"],textarea,input');
     if (!f) { select(blocks()[i], el); return; }
     f.focus();
@@ -90,12 +91,33 @@ export function createVisual(ed) {
       btn('trash', 'Excluir bloco', () => remove(b), 'danger'));
     return bar;
   }
-  const fmt = (cmd) => { document.execCommand(cmd); };
+  // Blocos de texto são editados como markdown puro (textarea .mdsrc); o callout ainda usa contenteditable.
+  const mdTa = () => { const a = document.activeElement; return a?.classList?.contains('mdsrc') ? a : null; };
+  const wrapSel = (ta, l, r = l) => {
+    const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+    if (s >= l.length && v.slice(s - l.length, s) === l && v.slice(e, e + r.length) === r) { ta.setRangeText(v.slice(s, e), s - l.length, e + r.length, 'select'); }
+    else { ta.setRangeText(l + v.slice(s, e) + r, s, e, 'select'); ta.setSelectionRange(s + l.length, e + l.length); }
+    ta.dispatchEvent(new Event('input'));
+  };
+  const fmt = (cmd) => { const t = mdTa(); if (t) return wrapSel(t, cmd === 'bold' ? '**' : '*'); document.execCommand(cmd); };
   function inlineCode() {
+    const ta = mdTa(); if (ta) return wrapSel(ta, '`');
     const s = getSelection(); if (!s.rangeCount || s.isCollapsed) return;
     const t = s.toString(); document.execCommand('insertHTML', false, `<code>${t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</code>`);
   }
   function linkPop(anchor) {
+    const t = mdTa();
+    if (t) {
+      const a = t.selectionStart, z = t.selectionEnd; if (a === z) { toast('Selecione o texto que será o link.'); return; }
+      const wrap = t.closest('.mdb'); const r = anchor.getBoundingClientRect();
+      const inp = h('input', { class: 'input', placeholder: 'https://… ou caminho da página', 'aria-label': 'Endereço do link' });
+      const pop = h('div', { class: 'linkpop', style: { left: r.left + 'px', top: r.bottom + 6 + 'px' } }, inp, h('button', { class: 'btn primary sm', onclick: apply }, 'Aplicar'));
+      function apply() { const u = inp.value.trim(); pop.remove(); if (!u) return; const v = t.value; wrap._setSrc(`${v.slice(0, a)}[${v.slice(a, z)}](${u})${v.slice(z)}`); }
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } else if (e.key === 'Escape') pop.remove(); });
+      document.body.append(pop); inp.focus();
+      setTimeout(() => document.addEventListener('mousedown', function off(e) { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', off); } }), 0);
+      return;
+    }
     const s = getSelection(); const range = s.rangeCount ? s.getRangeAt(0).cloneRange() : null;
     if (!range || range.collapsed) { toast('Selecione o texto que será o link.'); return; }
     const r = anchor.getBoundingClientRect();
@@ -222,13 +244,111 @@ export function createVisual(ed) {
     if (t === 'image') { renderBlocks(); pickImage(nb); } else renderBlocks(idx);
   }
 
-  function textKeys(e, b, node) {
-    if (slashEl) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); slashIdx = (slashIdx + 1) % slashItems.length; slashFilter(node, b, node.textContent.slice(1)); return; }
-      if (e.key === 'ArrowUp') { e.preventDefault(); slashIdx = (slashIdx - 1 + slashItems.length) % slashItems.length; slashFilter(node, b, node.textContent.slice(1)); return; }
-      if (e.key === 'Enter') { e.preventDefault(); pickSlash(slashIdx); return; }
-      if (e.key === 'Escape') { e.preventDefault(); closeSlash(); return; }
+  const txt = (node) => (node.value !== undefined ? node.value : node.textContent);
+  function slashKeys(e, b, node) {
+    if (!slashEl) return false;
+    if (e.key === 'ArrowDown') { e.preventDefault(); slashIdx = (slashIdx + 1) % slashItems.length; slashFilter(node, b, txt(node).slice(1)); return true; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); slashIdx = (slashIdx - 1 + slashItems.length) % slashItems.length; slashFilter(node, b, txt(node).slice(1)); return true; }
+    if (e.key === 'Enter') { e.preventDefault(); pickSlash(slashIdx); return true; }
+    if (e.key === 'Escape') { e.preventDefault(); closeSlash(); return true; }
+    return false;
+  }
+
+  // ───────── bloco de texto em markdown (estilo Obsidian) ─────────
+  // Fora de foco: renderizado. Em foco: o markdown cru, editável. Ao sair, o texto vira o bloco certo
+  // (digitar "## " cria título, "- " lista, "> " citação, "---" divisor, colar várias linhas cria vários blocos).
+  const PH = { p: "Escreva em markdown, ou digite '/' para inserir um bloco", h1: 'Título 1', h2: 'Título 2', h3: 'Título 3', h4: 'Título 4', quote: 'Citação' };
+  function viewContent(b) {
+    if (b.type === 'ul' || b.type === 'ol') {
+      const list = h(b.type, { class: `ce ${b.type}` });
+      (b.items.length ? b.items : ['']).forEach((t) => { const li = document.createElement('li'); li.innerHTML = inlineHtml(t, S.resolveUrl); list.append(li); });
+      return list;
     }
+    const node = h('div', { class: `ce ${b.type}`, 'data-ph': PH[b.type] || '' });
+    if (b.text) node.innerHTML = inlineHtml(b.text, S.resolveUrl);
+    return node;
+  }
+  const srcIndex = (src, prefix) => { let j = 0; for (const ch of prefix) { const k = src.indexOf(ch, j); if (k < 0) break; j = k + 1; } return j; };
+  function caretOffset(view, x, y) {
+    let node, off;
+    if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); node = p?.offsetNode; off = p?.offset; }
+    else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); node = r?.startContainer; off = r?.startOffset; }
+    if (!node || !view.contains(node)) return null;
+    const r = document.createRange(); r.setStart(view, 0); r.setEnd(node, off); return r.toString();
+  }
+
+  function mdBlock(b) {
+    const wrap = h('div', { class: 'mdb' });
+    const view = h('div', { class: 'mdview', tabIndex: 0 });
+    const ta = h('textarea', { class: 'mdsrc', rows: 1, 'aria-label': 'Texto (markdown)', autocapitalize: 'sentences' });
+    wrap.append(view, ta);
+    let editing = false, startType = b.type, startSrc = '';
+    const paint = () => { view.replaceChildren(viewContent(b)); };
+    const size = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+    const look = () => { ta.dataset.t = detectType(ta.value); };
+    // mantém o modelo do documento sempre em dia (o salvamento lê direto dele)
+    function sync(src) {
+      const bl = sourceToBlocks(src);
+      for (const k of Object.keys(b)) delete b[k];
+      if (bl.length === 1) Object.assign(b, bl[0]); else Object.assign(b, { type: 'raw', src, dirty: true });
+      ed.touch();
+    }
+    function edit(atEnd = true, pos = null) {
+      if (editing) return; editing = true; startType = b.type; startSrc = blockSource(b);
+      wrap.classList.add('editing'); ta.value = startSrc; look(); size(); ta.focus({ preventScroll: true });
+      const p = pos === null ? (atEnd ? ta.value.length : 0) : pos; ta.setSelectionRange(p, p);
+    }
+    function leave() {
+      if (!editing) return; editing = false; wrap.classList.remove('editing');
+      const i = blocks().indexOf(b); if (i < 0) return;
+      if (ta.value !== startSrc) {
+        const bl = sourceToBlocks(ta.value);
+        if (!(bl.length === 1 && bl[0].type === startType && b.type === startType)) { blocks().splice(i, 1, ...bl); ed.touch(); sel = null; renderBlocks(); return; }
+      }
+      paint();
+    }
+    wrap._edit = edit;
+    wrap._setSrc = (src) => { sync(src); if (editing) { ta.value = blockSource(b); look(); size(); } else edit(true); };
+    paint();
+    view.addEventListener('click', (e) => { e.preventDefault(); const pre = caretOffset(view, e.clientX, e.clientY); edit(true, null); if (pre !== null) { const p = srcIndex(ta.value, pre); ta.setSelectionRange(p, p); } });
+    view.addEventListener('focus', () => edit(true));
+    ta.addEventListener('blur', () => { if (document.hasFocus()) leave(); });
+    ta.addEventListener('input', () => {
+      look(); size(); sync(ta.value);
+      const m = /^\/([^\s]*)$/.exec(ta.value);
+      if (m && ta.dataset.t === 'p') slashFilter(ta, b, m[1]); else closeSlash();
+    });
+    ta.addEventListener('keydown', (e) => {
+      if (slashKeys(e, b, ta)) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.shiftKey && 'bi'.includes(e.key.toLowerCase())) { e.preventDefault(); wrapSel(ta, e.key.toLowerCase() === 'b' ? '**' : '*'); return; }
+      if (e.key === 'Escape') { ta.blur(); return; }
+      const i = blocks().indexOf(b);
+      if (e.key === 'Enter' && !e.shiftKey && !mod && !e.isComposing) {
+        e.preventDefault();
+        const pos = ta.selectionStart, end = ta.selectionEnd, t = detectType(ta.value);
+        if (t === 'ul' || t === 'ol') {
+          const r = listEnter(ta.value, pos, end);
+          if (r && !r.exit) { ta.value = r.value; ta.setSelectionRange(r.caret, r.caret); ta.dispatchEvent(new Event('input')); return; }
+          if (r?.exit) { editing = false; sync(r.value); const nb = make('p'); blocks().splice(i + 1, 0, nb); sel = null; renderBlocks(i + 1); return; }
+        }
+        const before = ta.value.slice(0, pos), after = ta.value.slice(end);
+        editing = false; sync(before);
+        const nb = make(t === 'quote' ? 'quote' : 'p'); nb.text = after;
+        blocks().splice(i + 1, 0, nb); ed.touch(); sel = null; renderBlocks(i + 1, false); return;
+      }
+      if (e.key === 'Backspace' && ta.selectionStart === ta.selectionEnd) {
+        if (!ta.value) { if (blocks().length > 1) { e.preventDefault(); editing = false; remove(b); } return; }
+        if (ta.selectionStart === ta.value.length && /^(#{1,4}|>|[-*+]|\d+[.)])\s$/.test(ta.value)) { e.preventDefault(); ta.value = ''; ta.dispatchEvent(new Event('input')); return; }
+      }
+      if (e.key === 'ArrowUp' && ta.selectionStart === 0 && ta.selectionEnd === 0 && i > 0) { e.preventDefault(); focusBlock(i - 1); }
+      if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length && i < blocks().length - 1) { e.preventDefault(); focusBlock(i + 1, false); }
+    });
+    return wrap;
+  }
+
+  function textKeys(e, b, node) {
+    if (slashKeys(e, b, node)) return;
     const i = blocks().indexOf(b);
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && 'bi'.includes(e.key.toLowerCase())) { e.preventDefault(); fmt(e.key.toLowerCase() === 'b' ? 'bold' : 'italic'); return; }
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
@@ -256,23 +376,7 @@ export function createVisual(ed) {
   }
 
   function body(b, el) {
-    if (TEXT_TYPES.includes(b.type)) return ce(b, b.type, b.type === 'p' ? "Escreva algo, ou digite '/' para ver os blocos" : TYPE_LABEL[b.type]);
-    if (b.type === 'ul' || b.type === 'ol') {
-      const list = h(b.type, { class: `ce ${b.type}`, contenteditable: 'true', role: 'textbox', 'aria-label': TYPE_LABEL[b.type] });
-      (b.items.length ? b.items : ['']).forEach((t) => { const li = document.createElement('li'); li.innerHTML = inlineHtml(t, S.resolveUrl); list.append(li); });
-      list.addEventListener('input', () => { b.items = [...list.querySelectorAll(':scope > li')].map((li) => htmlToInlineMd(li)); touch(b); });
-      list.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && 'bi'.includes(e.key.toLowerCase())) { e.preventDefault(); fmt(e.key.toLowerCase() === 'b' ? 'bold' : 'italic'); return; }
-        const li = getSelection().anchorNode?.parentElement?.closest('li') || getSelection().anchorNode?.closest?.('li');
-        if (e.key === 'Enter' && li && !li.textContent.trim() && li === list.lastElementChild) {
-          e.preventDefault(); if (list.children.length > 1) li.remove();
-          b.items = [...list.querySelectorAll(':scope > li')].map((x) => htmlToInlineMd(x)); b.dirty = true;
-          const i = blocks().indexOf(b); const nb = make('p'); blocks().splice(i + 1, 0, nb); ed.touch(); sel = null; renderBlocks(i + 1);
-        }
-      });
-      list.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\n+/g, ' ')); });
-      return list;
-    }
+    if (TEXT_TYPES.includes(b.type) || b.type === 'ul' || b.type === 'ol') return mdBlock(b);
     if (b.type === 'callout') {
       const box = h('div', { class: `callout-box ${b.kind}` });
       const kind = h('select', { class: 'select', style: { width: '120px', height: '26px', fontSize: '12px' }, 'aria-label': 'Tipo de aviso', onchange: (e) => { b.kind = e.target.value; box.className = `callout-box ${b.kind}`; touch(b); } }, KINDS.map(([k, l]) => h('option', { value: k, selected: k === b.kind }, l)));

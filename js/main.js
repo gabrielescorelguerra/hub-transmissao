@@ -1,8 +1,10 @@
-import { applyTheme, $, h, toast, withTransition, prefersReduced } from './ui.js';
+import { applyTheme, $, h, toast } from './ui.js';
+import { initMotion, motionOn, swapWith } from './motion.js';
 import * as S from './store.js';
 import { createShell } from './shell.js';
 
 applyTheme();
+initMotion();
 const app = $('#app');
 const shell = createShell(app);
 let current = null;          // elemento da tela atual
@@ -73,10 +75,8 @@ async function route() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
   shell.loading(false);
-  if (!old || prefersReduced()) { swap(); return; }
-  old.style.viewTransitionName = 'view';
-  await withTransition(() => { old.style.viewTransitionName = ''; next.style.viewTransitionName = 'view'; swap(); });
-  next.style.viewTransitionName = '';
+  if (!old || !motionOn()) { swap(); return; }
+  await swapWith(old, () => { swap(); return next; });
 }
 
 window.addEventListener('hashchange', route);
