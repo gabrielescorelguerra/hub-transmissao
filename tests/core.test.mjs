@@ -147,3 +147,25 @@ test('diff de linhas', () => {
   assert.deepEqual(d.stats, { add: 2, del: 1 });
   assert.deepEqual(d.rows.map((r) => r.t), [' ', '-', '+', ' ', '+']);
 });
+
+import { blockSource, detectType, sourceToBlocks, listEnter } from '../js/md.js';
+
+test('markdown em bloco: fonte, tipo detectado e conversão', () => {
+  assert.equal(blockSource({ type: 'h2', text: 'Oi' }), '## Oi');
+  assert.equal(blockSource({ type: 'ul', items: ['a', 'b'] }), '- a\n- b');
+  assert.equal(detectType('## x'), 'h2'); assert.equal(detectType('> x'), 'quote');
+  assert.equal(detectType('- x'), 'ul'); assert.equal(detectType('3. x'), 'ol'); assert.equal(detectType('texto'), 'p');
+  assert.equal(sourceToBlocks('')[0].type, 'p');
+  const bl = sourceToBlocks('# T\n\ntexto **b**\n\n- a\n- b');
+  assert.deepEqual(bl.map((b) => b.type), ['h1', 'p', 'ul']); assert.ok(bl.every((b) => b.dirty));
+});
+
+test('markdown em bloco: Enter continua ou encerra a lista', () => {
+  let r = listEnter('- a', 3);
+  assert.equal(r.value, '- a\n- '); assert.equal(r.caret, 6);
+  r = listEnter('1. a\n2. b', 9);
+  assert.equal(r.value, '1. a\n2. b\n3. ');
+  r = listEnter('- a\n- ', 6); assert.deepEqual(r, { exit: true, value: '- a' });
+  r = listEnter('- ab', 3); assert.equal(r.value, '- a\n- b');
+  assert.equal(listEnter('texto', 2), null);
+});

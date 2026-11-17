@@ -1,5 +1,6 @@
 // Casca única do site: o mesmo topo em todas as telas (marca · abas · busca · GitHub · tema · ação).
-import { h, icon, toggleTheme, clear } from './ui.js';
+import { h, icon, toggleTheme, clear, toast } from './ui.js';
+import { motionOn, setMotion } from './motion.js';
 import { CONFIG } from './config.js';
 
 const AREAS = [['docs', '#/', 'Documentação'], ['checklist', '#/checklist', 'Checklist'], ['mensagens', '#/mensagens', 'Mensagens']];
@@ -7,6 +8,10 @@ const AREAS = [['docs', '#/', 'Documentação'], ['checklist', '#/checklist', 'C
 export function createShell(root) {
   const themeIcon = () => icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', 18);
   const themeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Alternar tema', onclick: () => { toggleTheme(); themeBtn.replaceChildren(themeIcon()); } }, themeIcon());
+  const motionIcon = () => icon(motionOn() ? 'zap' : 'zap-off', 18);
+  const paintMotion = () => { motionBtn.replaceChildren(motionIcon()); motionBtn.setAttribute('aria-pressed', String(motionOn())); motionBtn.title = motionOn() ? 'Animações ligadas (clique para desligar)' : 'Animações desligadas (clique para ligar)'; };
+  const motionBtn = h('button', { class: 'icon-btn', 'aria-label': 'Animações', onclick: () => { setMotion(!motionOn()); paintMotion(); toast(motionOn() ? 'Animações ligadas' : 'Animações desligadas', { ms: 1400 }); } });
+  paintMotion();
   const menuBtn = h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Abrir menu', hidden: true }, icon('menu', 20));
   const brandName = h('span', { class: 'brand-name' }, CONFIG.siteName);
   const ind = h('span', { class: 'nav-ind', 'aria-hidden': 'true' });
@@ -18,7 +23,7 @@ export function createShell(root) {
     h('a', { class: 'brand', href: '#/' }, h('span', { class: 'logo' }, icon('book', 16, '#fff')), brandName), nav,
     h('span', { class: 'grow' }), searchSlot,
     h('a', { class: 'btn ghost sm gh', href: `https://github.com/${CONFIG.owner}/${CONFIG.repo}`, target: '_blank', rel: 'noopener noreferrer' }, icon('github', 15), 'GitHub'),
-    themeBtn, actionSlot);
+    motionBtn, themeBtn, actionSlot);
   const progress = h('div', { class: 'route-bar' });
   const view = h('div', { class: 'view-host' });
   root.append(bar, progress, view);
